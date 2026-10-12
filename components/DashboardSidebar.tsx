@@ -147,23 +147,26 @@ export default function DashboardSidebar({
           type="button"
           aria-label="Close navigation"
           onClick={onCloseMobile}
-          className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 top-[76px] z-[80] bg-black/60 backdrop-blur-sm lg:hidden"
         />
       )}
 
       <aside
         className={[
-          "fixed bottom-0 left-0 top-16 z-[70] flex flex-col",
-          "border-r border-white/[0.08] bg-[#0b0e17]",
-          "transition-[width,transform] duration-200 ease-out",
+          "fixed z-[90] flex flex-col border-white/[0.08] bg-[#0b0e17]",
+          "transition-[width,transform,bottom] duration-200 ease-out",
+          "left-0 top-[76px] bottom-0 border-r",
           collapsed ? "w-[76px]" : "w-[264px]",
-          mobileOpen
-            ? "translate-x-0"
-            : "-translate-x-full lg:translate-x-0",
+          mobileOpen ? "translate-x-0" : "-translate-x-full",
+          "lg:translate-x-0",
+          "max-lg:inset-x-0 max-lg:top-auto max-lg:bottom-0",
+          "max-lg:h-[76px] max-lg:w-full max-lg:flex-row max-lg:border-r-0",
+          "max-lg:border-t max-lg:pb-[env(safe-area-inset-bottom)]",
+          "max-lg:overflow-visible",
         ].join(" ")}
       >
         {/* Workspace selector */}
-        <div className="border-b border-white/[0.07] p-3">
+        <div className="border-b border-white/[0.07] p-3 max-lg:hidden">
           <div className="mb-2 flex items-center justify-between px-2">
             {!collapsed && (
               <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
@@ -283,9 +286,9 @@ export default function DashboardSidebar({
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-5">
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-5 max-lg:flex max-lg:items-center max-lg:justify-around max-lg:overflow-visible max-lg:px-1 max-lg:py-1">
           {!collapsed && (
-            <p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+            <p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 max-lg:hidden">
               {mode === "personal" ? "Your workspace" : "Manage business"}
             </p>
           )}
@@ -304,6 +307,7 @@ export default function DashboardSidebar({
                 className={[
                   "group relative flex items-center gap-3 rounded-xl px-3 py-3 text-sm transition-colors",
                   collapsed ? "justify-center" : "",
+                  "max-lg:flex-1 max-lg:flex-col max-lg:justify-center max-lg:gap-1 max-lg:px-1 max-lg:py-2 max-lg:text-[10px]",
                   active
                     ? "bg-violet-500/12 font-medium text-violet-200"
                     : "text-slate-400 hover:bg-white/[0.045] hover:text-slate-100",
@@ -323,14 +327,16 @@ export default function DashboardSidebar({
                   }
                 />
 
-                {!collapsed && <span className="truncate">{item.label}</span>}
+                <span className={collapsed ? "hidden" : "truncate max-lg:block max-lg:max-w-full max-lg:text-center"}>
+                  {item.label}
+                </span>
               </Link>
             );
           })}
         </nav>
 
         {/* Bottom links and collapse */}
-        <div className="border-t border-white/[0.07] p-3">
+        <div className="border-t border-white/[0.07] p-3 max-lg:flex max-lg:items-center max-lg:gap-1 max-lg:border-l max-lg:border-t-0 max-lg:px-2 max-lg:py-1">
           <Link
             href="/dashboard/settings"
             onClick={onCloseMobile}
@@ -341,10 +347,11 @@ export default function DashboardSidebar({
                 ? "bg-violet-500/12 text-violet-200"
                 : "text-slate-400 hover:bg-white/[0.045] hover:text-white",
               collapsed ? "justify-center" : "",
+              "max-lg:mt-0 max-lg:flex-1 max-lg:flex-col max-lg:gap-1 max-lg:px-1 max-lg:py-2 max-lg:text-[10px]",
             ].join(" ")}
           >
             <Settings size={19} />
-            {!collapsed && <span>Settings</span>}
+            <span className={collapsed ? "hidden" : "max-lg:block max-lg:text-center"}>Settings</span>
           </Link>
 
           <Link
@@ -354,6 +361,7 @@ export default function DashboardSidebar({
             className={[
               "mt-1 flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-slate-400 transition hover:bg-white/[0.045] hover:text-white",
               collapsed ? "justify-center" : "",
+              "max-lg:hidden",
             ].join(" ")}
           >
             <CircleHelp size={19} />

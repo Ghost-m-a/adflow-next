@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  Menu,
-  PanelLeftClose,
-  PanelLeftOpen,
-} from "lucide-react";
+import { Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import Topbar from "@/components/Topbar";
@@ -12,21 +8,22 @@ import DashboardSidebar from "@/components/DashboardSidebar";
 
 type WorkspaceMode = "personal" | "business";
 
-type DashboardShellProps = {
-  children: ReactNode;
-};
-
 export default function DashboardShell({
   children,
-}: DashboardShellProps) {
+}: {
+  children: ReactNode;
+}) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mode, setMode] = useState<WorkspaceMode>("personal");
   const [selectedOrganizationId, setSelectedOrganizationId] = useState("");
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
 
   useEffect(() => {
     try {
-      setCollapsed(localStorage.getItem("adflow-sidebar-collapsed") === "true");
+      setCollapsed(
+        localStorage.getItem("adflow-sidebar-collapsed") === "true",
+      );
 
       const savedMode = localStorage.getItem("adflow-workspace-mode");
       if (savedMode === "personal" || savedMode === "business") {
@@ -37,66 +34,70 @@ export default function DashboardShell({
         localStorage.getItem("adflow-organization-id") || "",
       );
     } catch {
-      // The shell remains usable when browser storage is unavailable.
+      // Keep defaults when browser storage is unavailable.
+    } finally {
+      setPreferencesLoaded(true);
     }
   }, []);
 
-  const handleModeChange = useCallback((nextMode: WorkspaceMode) => {
-    setMode(nextMode);
-
+  const handleModeChange = useCallback((next: WorkspaceMode) => {
+    setMode(next);
     try {
-      localStorage.setItem("adflow-workspace-mode", nextMode);
-    } catch {
-      // Keep the current selection in React state.
-    }
+      localStorage.setItem("adflow-workspace-mode", next);
+    } catch {}
   }, []);
 
   const handleOrganizationChange = useCallback((id: string) => {
     setSelectedOrganizationId(id);
-
     try {
       localStorage.setItem("adflow-organization-id", id);
-    } catch {
-      // Keep the current selection in React state.
-    }
+    } catch {}
   }, []);
 
-  function toggleSidebar() {
+  const toggleSidebar = useCallback(() => {
     setCollapsed((current) => {
       const next = !current;
-
       try {
         localStorage.setItem("adflow-sidebar-collapsed", String(next));
-      } catch {
-        // The current page still works without persistence.
-      }
-
+      } catch {}
       return next;
     });
-  }
+  }, []);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setMobileOpen(false);
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [mobileOpen]);
 
   return (
     <div className="min-h-screen bg-[#080b12] text-white">
-      {/* Fixed top navigation; its existing authentication stays intact. */}
-      <div className="fixed inset-x-0 top-0 z-50 bg-[#080b12]">
-        <div className="relative pl-12 lg:pl-0">
+      {/* The single fixed topbar is shared by every dashboard page. */}
+      <header className="fixed inset-x-0 top-0 z-[100] h-[76px] border-b border-white/[0.08] bg-[#080b12]/95 backdrop-blur-xl">
+        <div className="relative h-full">
           <Topbar />
 
           <button
             type="button"
             aria-label="Open navigation"
-            onClick={() => setMobileOpen(true)}
-            className="absolute left-3 top-1/2 z-[80] -translate-y-1/2 rounded-lg border border-white/10 bg-[#111522] p-2 text-slate-300 transition hover:bg-white/10 hover:text-white lg:hidden"
+            aria-expanded={mobileOpen}
+            onClick={() => setMobileOpen((open) => !open)}
+            className="absolute left-3 top-1/2 z-[110] flex -translate-y-1/2 items-center justify-center rounded-xl border border-white/10 bg-[#111522] p-2 text-slate-300 transition hover:bg-white/10 hover:text-white lg:hidden"
           >
-            <Menu size={18} />
+            <Menu size={19} />
           </button>
 
           <button
             type="button"
-            aria-label={collapsed ? "Expand sidebar" : "Hide sidebar"}
-            title={collapsed ? "Expand sidebar" : "Hide sidebar"}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             onClick={toggleSidebar}
-            className="absolute right-3 top-1/2 z-[80] hidden -translate-y-1/2 rounded-lg border border-white/10 bg-[#111522] p-2 text-slate-300 transition hover:bg-white/10 hover:text-white xl:block"
+            className="absolute right-3 top-1/2 z-[110] hidden -translate-y-1/2 rounded-xl border border-white/10 bg-[#111522] p-2 text-slate-300 transition hover:bg-white/10 hover:text-white xl:block"
           >
             {collapsed ? (
               <PanelLeftOpen size={17} />
@@ -105,7 +106,7 @@ export default function DashboardShell({
             )}
           </button>
         </div>
-      </div>
+      </header>
 
       <DashboardSidebar
         collapsed={collapsed}
@@ -118,15 +119,24 @@ export default function DashboardShell({
         onOrganizationChange={handleOrganizationChange}
       />
 
-      {/* Only page content scrolls; navigation remains fixed. */}
+      {/* Desktop content begins below the 76px fixed header. */}
       <div
-        className={`min-h-screen pt-16 transition-[margin] duration-200 ${
-          collapsed ? "lg:ml-[76px]" : "lg:ml-[264px]"
-        }`}
+        className={[
+          "min-h-screen pt-[76px] transition-[margin] duration-200 ease-out",
+          "pb-[84px] lg:pb-0",
+          "lg:ml-[var(--adflow-sidebar-width)]",
+        ].join(" ")}
+        style={
+          {
+            "--adflow-sidebar-width": collapsed ? "76px" : "264px",
+          } as React.CSSProperties
+        }
       >
-        <div className="h-[calc(100vh-4rem)] overflow-y-auto overscroll-contain">
+        <div className="min-h-[calc(100vh-76px)]">
           <div className="mx-auto w-full max-w-[1800px] p-4 sm:p-6 lg:p-8">
-            {children}
+            {preferencesLoaded ? children : (
+              <div className="min-h-[40vh]" aria-busy="true" />
+            )}
           </div>
         </div>
       </div>

@@ -8,6 +8,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import NotificationBell from "@/components/NotificationBell";
 
 type CurrentUser = {
   _id?: string;
@@ -217,7 +218,7 @@ export default function Topbar() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/[0.08] bg-[#080b12]/90 text-white backdrop-blur-xl">
-      <div className="mx-auto flex h-[76px] max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-[76px] max-w-7xl items-center justify-between gap-2 pl-14 pr-3 sm:gap-4 sm:pl-16 sm:pr-6 lg:px-8">
         <Link
           href="/dashboard"
           className="shrink-0 text-xl font-black tracking-tight sm:text-2xl"
@@ -226,13 +227,15 @@ export default function Topbar() {
           AD<span className="text-violet-400">FLOW</span>
         </Link>
 
-        <div className="flex min-w-0 items-center gap-3">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <Link
             href="/dashboard"
             className="hidden rounded-xl px-4 py-2 text-sm font-medium text-gray-300 transition hover:bg-white/[0.06] hover:text-white sm:inline-flex"
           >
             Dashboard
           </Link>
+
+          <NotificationBell />
 
           <div className="relative" ref={menuRef}>
             <button
