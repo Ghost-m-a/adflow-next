@@ -496,9 +496,7 @@ html[data-theme="light"] .adflow-glass {
    9. RESPONSIVENESS
    ============================================================ */
 
-@media (min-width: 1024px) and (max-width: 1279px) {
-  aside.fixed { width: 76px !important; }
-}
+/* Auto-collapse at intermediate widths is handled in DashboardShell.tsx */
 
 @media (max-width: 1023px) {
   html, body { min-height: 100%; }

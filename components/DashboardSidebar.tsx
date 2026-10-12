@@ -5,6 +5,8 @@ import {
   Building2,
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   CircleHelp,
   Compass,
   LayoutDashboard,
@@ -159,16 +161,16 @@ export default function DashboardSidebar({
         />
       )}
 
-      {/* Desktop icon rail / expanded sidebar */}
+      {/* ---- Desktop sidebar ---- */}
       <aside
         className={[
-          "fixed bottom-0 left-0 top-[76px] z-[90] hidden flex-col border-r border-white/[0.08]",
-          "bg-[#111318] transition-[width] duration-200 lg:flex",
-          collapsed ? "w-16" : "w-[264px]",
+          "fixed bottom-0 left-0 top-[76px] z-[90] hidden flex-col overflow-hidden border-r border-white/[0.08]",
+          "bg-[#111318] transition-[width] duration-200 ease-out lg:flex",
+          collapsed ? "w-[76px]" : "w-[264px]",
         ].join(" ")}
       >
-        {/* Workspace controls */}
-        <div className="border-b border-white/[0.07] p-3">
+        {/* Workspace switcher */}
+        <div className="shrink-0 border-b border-white/[0.07] p-3">
           <div className="relative">
             <button
               type="button"
@@ -176,9 +178,9 @@ export default function DashboardSidebar({
               aria-expanded={workspaceMenuOpen}
               onClick={() => setWorkspaceMenuOpen((value) => !value)}
               className={[
-                "flex w-full items-center gap-3 rounded-xl border border-transparent p-2 text-left transition",
+                "flex w-full items-center gap-3 overflow-hidden rounded-xl border border-transparent p-2 text-left transition",
                 "hover:border-white/[0.08] hover:bg-white/[0.04]",
-                collapsed ? "justify-center" : "",
+                collapsed ? "justify-center px-0" : "",
               ].join(" ")}
             >
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-violet-400/20 bg-violet-500/15 text-violet-200">
@@ -187,8 +189,8 @@ export default function DashboardSidebar({
 
               {!collapsed && (
                 <>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                  <span className="min-w-0 flex-1 overflow-hidden">
+                    <span className="block truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
                       Workspace
                     </span>
                     <span className="mt-0.5 block truncate text-sm font-medium text-slate-100">
@@ -205,9 +207,9 @@ export default function DashboardSidebar({
             {workspaceMenuOpen && (
               <div
                 className={[
-                  "absolute left-0 top-full z-[130] mt-2 w-56 rounded-xl border border-white/10",
+                  "absolute top-full z-[130] mt-2 w-56 overflow-hidden rounded-xl border border-white/10",
                   "bg-[#191c24] p-2 shadow-2xl shadow-black/40",
-                  collapsed ? "left-12 top-0 mt-0" : "",
+                  collapsed ? "left-12 mt-0" : "left-0",
                 ].join(" ")}
               >
                 <p className="px-2 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
@@ -289,9 +291,10 @@ export default function DashboardSidebar({
           )}
         </div>
 
+        {/* Navigation */}
         <nav className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-2 py-4">
           {!collapsed && (
-            <p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+            <p className="mb-3 truncate px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
               {mode === "personal" ? "Your workspace" : "Business"}
             </p>
           )}
@@ -308,8 +311,8 @@ export default function DashboardSidebar({
                 aria-label={item.label}
                 aria-current={active ? "page" : undefined}
                 className={[
-                  "group relative flex h-11 items-center gap-3 rounded-xl px-3 text-sm transition-colors",
-                  collapsed ? "justify-center px-0" : "",
+                  "group relative flex h-11 items-center gap-3 overflow-hidden rounded-xl text-sm transition-colors",
+                  collapsed ? "justify-center px-0" : "px-3",
                   active
                     ? "bg-violet-500/15 font-medium text-violet-200"
                     : "text-slate-400 hover:bg-white/[0.045] hover:text-slate-100",
@@ -332,63 +335,75 @@ export default function DashboardSidebar({
           })}
         </nav>
 
-        <div className="space-y-1 border-t border-white/[0.07] p-2">
+        {/* Bottom actions */}
+        <div className="shrink-0 space-y-1 border-t border-white/[0.07] p-2">
           <Link
             href="/dashboard/settings"
             title={collapsed ? "Settings" : undefined}
             aria-label="Settings"
             className={[
-              "flex h-11 items-center gap-3 rounded-xl px-3 text-sm transition",
-              collapsed ? "justify-center px-0" : "",
+              "flex h-11 items-center gap-3 overflow-hidden rounded-xl text-sm transition",
+              collapsed ? "justify-center px-0" : "px-3",
               isActive("/dashboard/settings")
                 ? "bg-violet-500/15 text-violet-200"
                 : "text-slate-400 hover:bg-white/[0.045] hover:text-white",
             ].join(" ")}
           >
             <Settings size={19} />
-            {!collapsed && <span>Settings</span>}
+            {!collapsed && <span className="truncate">Settings</span>}
           </Link>
 
           <Link
             href="/help"
-            title={collapsed ? "Help and support" : undefined}
-            aria-label="Help and support"
+            title={collapsed ? "Help & support" : undefined}
+            aria-label="Help & support"
             className={[
-              "flex h-11 items-center gap-3 rounded-xl px-3 text-sm text-slate-400 transition hover:bg-white/[0.045] hover:text-white",
-              collapsed ? "justify-center px-0" : "",
+              "flex h-11 items-center gap-3 overflow-hidden rounded-xl text-sm text-slate-400 transition hover:bg-white/[0.045] hover:text-white",
+              collapsed ? "justify-center px-0" : "px-3",
             ].join(" ")}
           >
             <CircleHelp size={19} />
-            {!collapsed && <span>Help & support</span>}
+            {!collapsed && <span className="truncate">Help & support</span>}
           </Link>
 
+          {/* Collapse toggle — icon + text now fit on one line */}
           <button
             type="button"
             onClick={onToggle}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className="mt-2 flex h-10 w-full items-center justify-center rounded-xl border border-white/[0.07] text-xs text-slate-400 transition hover:bg-white/[0.04] hover:text-white"
+            className={[
+              "flex h-10 w-full items-center gap-2 overflow-hidden rounded-xl border border-white/[0.07] text-xs font-medium text-slate-400 transition hover:bg-white/[0.04] hover:text-white",
+              collapsed ? "justify-center px-0" : "px-3",
+            ].join(" ")}
           >
-            {collapsed ? <ChevronDown size={17} className="rotate-[-90deg]" /> : "Collapse sidebar"}
+            {collapsed ? (
+              <ChevronRight size={17} className="shrink-0" />
+            ) : (
+              <>
+                <ChevronLeft size={16} className="shrink-0" />
+                <span className="truncate whitespace-nowrap">Collapse</span>
+              </>
+            )}
           </button>
         </div>
       </aside>
 
-      {/* Mobile slide-out menu */}
+      {/* ---- Mobile drawer ---- */}
       <aside
         className={[
-          "fixed bottom-0 left-0 top-[76px] z-[95] flex w-[min(300px,85vw)] flex-col",
+          "fixed bottom-0 left-0 top-[76px] z-[95] flex w-[min(300px,85vw)] flex-col overflow-hidden",
           "border-r border-white/[0.08] bg-[#111318] shadow-2xl shadow-black/40",
-          "transition-transform duration-200 lg:hidden",
+          "transition-transform duration-200 ease-out lg:hidden",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
         ].join(" ")}
       >
-        <div className="flex items-center justify-between border-b border-white/[0.08] p-4">
-          <div>
+        <div className="flex shrink-0 items-center justify-between border-b border-white/[0.08] p-4">
+          <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
               Workspace
             </p>
-            <p className="mt-1 text-sm font-semibold text-white">
+            <p className="mt-1 truncate text-sm font-semibold text-white">
               {mode === "personal" ? "Personal" : selectedOrganization?.name || "Business"}
             </p>
           </div>
@@ -402,7 +417,7 @@ export default function DashboardSidebar({
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 border-b border-white/[0.08] p-3">
+        <div className="grid shrink-0 grid-cols-2 gap-2 border-b border-white/[0.08] p-3">
           <button
             type="button"
             onClick={() => selectWorkspace("personal")}
@@ -430,7 +445,7 @@ export default function DashboardSidebar({
         </div>
 
         {mode === "business" && (
-          <div className="border-b border-white/[0.08] p-3">
+          <div className="shrink-0 border-b border-white/[0.08] p-3">
             <label htmlFor="mobile-sidebar-organization" className="mb-2 block text-xs text-slate-400">
               Active organization
             </label>
@@ -482,7 +497,7 @@ export default function DashboardSidebar({
           })}
         </nav>
 
-        <div className="border-t border-white/[0.08] p-3">
+        <div className="shrink-0 border-t border-white/[0.08] p-3">
           <Link
             href="/dashboard/settings"
             onClick={navigateClose}
@@ -500,7 +515,7 @@ export default function DashboardSidebar({
         </div>
       </aside>
 
-      {/* Mobile bottom navigation */}
+      {/* ---- Mobile bottom nav ---- */}
       <nav
         aria-label="Mobile navigation"
         className="fixed inset-x-0 bottom-0 z-[70] flex h-[68px] items-stretch justify-around border-t border-white/[0.09] bg-[#111318]/[0.98] px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
@@ -537,7 +552,6 @@ export default function DashboardSidebar({
           aria-label="Open menu"
           aria-expanded={mobileOpen}
           onClick={() => {
-            // The parent shell owns the mobile menu state.
             const button = document.querySelector<HTMLButtonElement>(
               'button[aria-label="Open navigation"]',
             );
