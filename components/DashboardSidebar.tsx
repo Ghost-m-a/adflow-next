@@ -126,6 +126,12 @@ export default function DashboardSidebar({
     };
   }, [onOrganizationChange, selectedOrganizationId]);
 
+  // Close the workspace menu when the collapsed state changes.
+  useEffect(() => {
+    setWorkspaceMenuOpen(false);
+  }, [collapsed]);
+
+  // Close the workspace menu when the mobile drawer closes.
   useEffect(() => {
     if (!mobileOpen) setWorkspaceMenuOpen(false);
   }, [mobileOpen]);
@@ -134,6 +140,7 @@ export default function DashboardSidebar({
   const selectedOrganization = organizations.find(
     (org) => org._id === selectedOrganizationId,
   );
+  const ModeIcon = mode === "personal" ? UserRound : Building2;
 
   function isActive(href: string) {
     if (href === "/dashboard") return pathname === href;
@@ -152,6 +159,7 @@ export default function DashboardSidebar({
 
   return (
     <>
+      {/* Mobile backdrop */}
       {mobileOpen && (
         <button
           type="button"
@@ -161,21 +169,28 @@ export default function DashboardSidebar({
         />
       )}
 
-      {/* ---- Desktop sidebar ---- */}
+      {/* ============================================================
+          Desktop sidebar
+          ============================================================ */}
       <aside
+        data-sidebar
+        data-collapsed={collapsed ? "true" : "false"}
         className={[
           "fixed bottom-0 left-0 top-[76px] z-[90] hidden flex-col overflow-hidden border-r border-white/[0.08]",
           "bg-[#111318] transition-[width] duration-200 ease-out lg:flex",
           collapsed ? "w-[76px]" : "w-[264px]",
         ].join(" ")}
       >
-        {/* Workspace switcher */}
+        {/* ---- Workspace switcher ---- */}
         <div className="shrink-0 border-b border-white/[0.07] p-3">
           <div className="relative">
             <button
               type="button"
-              title={mode === "personal" ? "Personal workspace" : "Business workspace"}
+              title={
+                mode === "personal" ? "Personal workspace" : "Business workspace"
+              }
               aria-expanded={workspaceMenuOpen}
+              aria-haspopup="menu"
               onClick={() => setWorkspaceMenuOpen((value) => !value)}
               className={[
                 "flex w-full items-center gap-3 overflow-hidden rounded-xl border border-transparent p-2 text-left transition",
@@ -184,32 +199,38 @@ export default function DashboardSidebar({
               ].join(" ")}
             >
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-violet-400/20 bg-violet-500/15 text-violet-200">
-                {mode === "personal" ? <UserRound size={18} /> : <Building2 size={18} />}
+                <ModeIcon size={18} />
               </span>
 
-              {!collapsed && (
-                <>
-                  <span className="min-w-0 flex-1 overflow-hidden">
-                    <span className="block truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                      Workspace
-                    </span>
-                    <span className="mt-0.5 block truncate text-sm font-medium text-slate-100">
-                      {mode === "personal"
-                        ? "Personal"
-                        : selectedOrganization?.name || "Business"}
-                    </span>
-                  </span>
-                  <ChevronDown size={15} className="shrink-0 text-slate-500" />
-                </>
-              )}
+              <span
+                data-sidebar-label
+                className="min-w-0 flex-1 overflow-hidden"
+              >
+                <span className="block truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                  Workspace
+                </span>
+                <span className="mt-0.5 block truncate text-sm font-medium text-slate-100">
+                  {mode === "personal"
+                    ? "Personal"
+                    : selectedOrganization?.name || "Business"}
+                </span>
+              </span>
+
+              <ChevronDown
+                data-sidebar-label
+                size={15}
+                className="shrink-0 text-slate-500"
+              />
             </button>
 
             {workspaceMenuOpen && (
               <div
+                role="menu"
                 className={[
-                  "absolute top-full z-[130] mt-2 w-56 overflow-hidden rounded-xl border border-white/10",
-                  "bg-[#191c24] p-2 shadow-2xl shadow-black/40",
-                  collapsed ? "left-12 mt-0" : "left-0",
+                  "absolute z-[130] w-56 overflow-hidden rounded-xl border border-white/10 bg-[#191c24] p-2 shadow-2xl shadow-black/40",
+                  collapsed
+                    ? "left-[calc(100%+8px)] top-0"
+                    : "left-0 top-[calc(100%+8px)]",
                 ].join(" ")}
               >
                 <p className="px-2 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
@@ -221,9 +242,11 @@ export default function DashboardSidebar({
                   onClick={() => selectWorkspace("personal")}
                   className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-200 hover:bg-white/[0.06]"
                 >
-                  <UserRound size={17} className="text-slate-400" />
+                  <UserRound size={17} className="shrink-0 text-slate-400" />
                   <span className="flex-1 text-left">Personal</span>
-                  {mode === "personal" && <Check size={15} className="text-violet-300" />}
+                  {mode === "personal" && (
+                    <Check size={15} className="shrink-0 text-violet-300" />
+                  )}
                 </button>
 
                 <button
@@ -231,9 +254,11 @@ export default function DashboardSidebar({
                   onClick={() => selectWorkspace("business")}
                   className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-200 hover:bg-white/[0.06]"
                 >
-                  <Building2 size={17} className="text-slate-400" />
+                  <Building2 size={17} className="shrink-0 text-slate-400" />
                   <span className="flex-1 text-left">Business</span>
-                  {mode === "business" && <Check size={15} className="text-violet-300" />}
+                  {mode === "business" && (
+                    <Check size={15} className="shrink-0 text-violet-300" />
+                  )}
                 </button>
 
                 {mode === "business" && (
@@ -247,14 +272,21 @@ export default function DashboardSidebar({
                     <select
                       id="sidebar-organization"
                       value={selectedOrganizationId}
-                      disabled={organizationsLoading || organizations.length === 0}
-                      onChange={(event) => onOrganizationChange(event.target.value)}
+                      disabled={
+                        organizationsLoading || organizations.length === 0
+                      }
+                      onChange={(event) =>
+                        onOrganizationChange(event.target.value)
+                      }
                       className="w-full rounded-lg border border-white/10 bg-[#101219] px-2 py-2 text-xs text-slate-200 outline-none focus:border-violet-400/50 disabled:opacity-50"
                     >
-                      {organizationsLoading && <option value="">Loading…</option>}
-                      {!organizationsLoading && organizations.length === 0 && (
-                        <option value="">No organizations yet</option>
+                      {organizationsLoading && (
+                        <option value="">Loading…</option>
                       )}
+                      {!organizationsLoading &&
+                        organizations.length === 0 && (
+                          <option value="">No organizations yet</option>
+                        )}
                       {organizations.map((org) => (
                         <option key={org._id} value={org._id}>
                           {org.name}
@@ -263,25 +295,29 @@ export default function DashboardSidebar({
                     </select>
 
                     {organizationsError && (
-                      <p className="mt-2 text-xs text-rose-300">{organizationsError}</p>
+                      <p className="mt-2 text-xs text-rose-300">
+                        {organizationsError}
+                      </p>
                     )}
 
-                    {!organizationsLoading && organizations.length === 0 && (
-                      <Link
-                        href="/dashboard/organizations/new"
-                        onClick={navigateClose}
-                        className="mt-2 flex items-center gap-2 rounded-lg px-2 py-2 text-xs text-violet-300 hover:bg-white/[0.05]"
-                      >
-                        <Plus size={14} />
-                        Create organization
-                      </Link>
-                    )}
+                    {!organizationsLoading &&
+                      organizations.length === 0 && (
+                        <Link
+                          href="/dashboard/organizations/new"
+                          onClick={navigateClose}
+                          className="mt-2 flex items-center gap-2 rounded-lg px-2 py-2 text-xs text-violet-300 hover:bg-white/[0.05]"
+                        >
+                          <Plus size={14} className="shrink-0" />
+                          Create organization
+                        </Link>
+                      )}
                   </div>
                 )}
               </div>
             )}
           </div>
 
+          {/* Business role badge — hidden when collapsed */}
           {!collapsed && mode === "business" && selectedOrganization && (
             <p className="mt-2 truncate px-3 text-[10px] text-slate-500">
               {selectedOrganization.role
@@ -291,7 +327,7 @@ export default function DashboardSidebar({
           )}
         </div>
 
-        {/* Navigation */}
+        {/* ---- Navigation ---- */}
         <nav className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-2 py-4">
           {!collapsed && (
             <p className="mb-3 truncate px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
@@ -326,16 +362,20 @@ export default function DashboardSidebar({
                   strokeWidth={active ? 2.2 : 1.8}
                   className={[
                     "shrink-0",
-                    active ? "text-violet-300" : "text-slate-400 group-hover:text-white",
+                    active
+                      ? "text-violet-300"
+                      : "text-slate-400 group-hover:text-white",
                   ].join(" ")}
                 />
-                {!collapsed && <span className="truncate">{item.label}</span>}
+                <span data-sidebar-label className="truncate">
+                  {item.label}
+                </span>
               </Link>
             );
           })}
         </nav>
 
-        {/* Bottom actions */}
+        {/* ---- Footer ---- */}
         <div className="shrink-0 space-y-1 border-t border-white/[0.07] p-2">
           <Link
             href="/dashboard/settings"
@@ -349,8 +389,10 @@ export default function DashboardSidebar({
                 : "text-slate-400 hover:bg-white/[0.045] hover:text-white",
             ].join(" ")}
           >
-            <Settings size={19} />
-            {!collapsed && <span className="truncate">Settings</span>}
+            <Settings size={19} className="shrink-0" />
+            <span data-sidebar-label className="truncate">
+              Settings
+            </span>
           </Link>
 
           <Link
@@ -362,11 +404,12 @@ export default function DashboardSidebar({
               collapsed ? "justify-center px-0" : "px-3",
             ].join(" ")}
           >
-            <CircleHelp size={19} />
-            {!collapsed && <span className="truncate">Help & support</span>}
+            <CircleHelp size={19} className="shrink-0" />
+            <span data-sidebar-label className="truncate">
+              Help & support
+            </span>
           </Link>
 
-          {/* Collapse toggle — icon + text now fit on one line */}
           <button
             type="button"
             onClick={onToggle}
@@ -382,14 +425,18 @@ export default function DashboardSidebar({
             ) : (
               <>
                 <ChevronLeft size={16} className="shrink-0" />
-                <span className="truncate whitespace-nowrap">Collapse</span>
+                <span data-sidebar-label className="truncate">
+                  Collapse
+                </span>
               </>
             )}
           </button>
         </div>
       </aside>
 
-      {/* ---- Mobile drawer ---- */}
+      {/* ============================================================
+          Mobile drawer
+          ============================================================ */}
       <aside
         className={[
           "fixed bottom-0 left-0 top-[76px] z-[95] flex w-[min(300px,85vw)] flex-col overflow-hidden",
@@ -404,7 +451,9 @@ export default function DashboardSidebar({
               Workspace
             </p>
             <p className="mt-1 truncate text-sm font-semibold text-white">
-              {mode === "personal" ? "Personal" : selectedOrganization?.name || "Business"}
+              {mode === "personal"
+                ? "Personal"
+                : selectedOrganization?.name || "Business"}
             </p>
           </div>
           <button
@@ -446,7 +495,10 @@ export default function DashboardSidebar({
 
         {mode === "business" && (
           <div className="shrink-0 border-b border-white/[0.08] p-3">
-            <label htmlFor="mobile-sidebar-organization" className="mb-2 block text-xs text-slate-400">
+            <label
+              htmlFor="mobile-sidebar-organization"
+              className="mb-2 block text-xs text-slate-400"
+            >
               Active organization
             </label>
             <select
@@ -456,17 +508,29 @@ export default function DashboardSidebar({
               onChange={(event) => onOrganizationChange(event.target.value)}
               className="w-full rounded-xl border border-white/10 bg-[#0b0e17] px-3 py-3 text-sm text-slate-200 outline-none focus:border-violet-400/50 disabled:opacity-50"
             >
-              {organizationsLoading && <option value="">Loading organizations…</option>}
+              {organizationsLoading && (
+                <option value="">Loading organizations…</option>
+              )}
               {!organizationsLoading && organizations.length === 0 && (
                 <option value="">No organizations yet</option>
               )}
               {organizations.map((org) => (
-                <option key={org._id} value={org._id}>{org.name}</option>
+                <option key={org._id} value={org._id}>
+                  {org.name}
+                </option>
               ))}
             </select>
-            {organizationsError && <p className="mt-2 text-xs text-rose-300">{organizationsError}</p>}
+            {organizationsError && (
+              <p className="mt-2 text-xs text-rose-300">
+                {organizationsError}
+              </p>
+            )}
             {!organizationsLoading && organizations.length === 0 && (
-              <Link href="/dashboard/organizations/new" onClick={navigateClose} className="mt-3 flex items-center gap-2 text-sm text-violet-300">
+              <Link
+                href="/dashboard/organizations/new"
+                onClick={navigateClose}
+                className="mt-3 flex items-center gap-2 text-sm text-violet-300"
+              >
                 <Plus size={16} /> Create organization
               </Link>
             )}
@@ -515,7 +579,9 @@ export default function DashboardSidebar({
         </div>
       </aside>
 
-      {/* ---- Mobile bottom nav ---- */}
+      {/* ============================================================
+          Mobile bottom navigation
+          ============================================================ */}
       <nav
         aria-label="Mobile navigation"
         className="fixed inset-x-0 bottom-0 z-[70] flex h-[68px] items-stretch justify-around border-t border-white/[0.09] bg-[#111318]/[0.98] px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
@@ -539,10 +605,18 @@ export default function DashboardSidebar({
               {active && (
                 <span className="absolute left-1/2 top-0 h-[3px] w-8 -translate-x-1/2 rounded-b-full bg-violet-400" />
               )}
-              <span className={active ? "flex h-9 w-10 items-center justify-center rounded-xl bg-violet-500/15" : "flex h-9 w-10 items-center justify-center"}>
+              <span
+                className={
+                  active
+                    ? "flex h-9 w-10 items-center justify-center rounded-xl bg-violet-500/15"
+                    : "flex h-9 w-10 items-center justify-center"
+                }
+              >
                 <Icon size={20} strokeWidth={active ? 2.2 : 1.8} />
               </span>
-              <span className="max-w-full truncate px-1 text-[10px]">{item.label}</span>
+              <span className="max-w-full truncate px-1 text-[10px]">
+                {item.label}
+              </span>
             </Link>
           );
         })}

@@ -556,3 +556,34 @@ html[data-theme="light"] .adflow-glass {
   main { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
   a[href]::after { content: " (" attr(href) ")"; font-size: 0.85em; color: #444; }
 }
+
+/* ============================================================
+   Sidebar layout invariants
+   The sidebar is state-driven (data-collapsed) so that the
+   collapsed layout cannot leak labels past the 76px column.
+   ============================================================ */
+
+[data-sidebar] {
+  overflow: hidden;
+}
+
+[data-sidebar] [data-sidebar-label] {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+[data-sidebar][data-collapsed="true"] [data-sidebar-label] {
+  display: none;
+}
+
+[data-sidebar][data-collapsed="true"] [data-sidebar-expanded-only] {
+  display: none !important;
+}
+
+[data-sidebar][data-collapsed="false"] [data-sidebar-collapsed-only] {
+  display: none !important;
+}
