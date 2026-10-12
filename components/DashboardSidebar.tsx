@@ -1,180 +1,383 @@
 "use client";
 
-import { useState } from "react";
+import {
+  Activity,
+  Building2,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  CircleHelp,
+  Compass,
+  LayoutDashboard,
+  Megaphone,
+  Settings,
+  UserRound,
+  Users,
+  Wallet,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
-const navigation = [
-   {
-      title: "WORKSPACE",
-      items: [
-         { label: "Overview", href: "/dashboard", icon: "◫" },
-         { label: "Campaigns", href: "/dashboard/campaigns", icon: "▤" },
-         { label: "Creator marketplace", href: "/marketplace", icon: "◇" },
-         { label: "Applications", href: "/dashboard/applications", icon: "☷" },
-      ],
-   },
-   {
-      title: "MANAGEMENT",
-      items: [
-         {
-            label: "Organizations",
-            href: "/dashboard/organizations",
-            icon: "▦",
-         },
-         { label: "Analytics", href: "/dashboard/analytics", icon: "⌁" },
-      ],
-   },
-   {
-      title: "PREFERENCES",
-      items: [{ label: "Settings", href: "/dashboard/settings", icon: "⚙" }],
-   },
+type Organization = {
+  _id: string;
+  name: string;
+  type?: "advertiser" | "agency";
+  role?: string;
+  defaultCurrency?: string;
+};
+
+type WorkspaceMode = "personal" | "business";
+
+type DashboardSidebarProps = {
+  collapsed: boolean;
+  mobileOpen: boolean;
+  mode: WorkspaceMode;
+  selectedOrganizationId: string;
+  onToggle: () => void;
+  onCloseMobile: () => void;
+  onModeChange: (mode: WorkspaceMode) => void;
+  onOrganizationChange: (organizationId: string) => void;
+};
+
+const personalLinks = [
+  { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Creator marketplace", href: "/marketplace", icon: Compass },
+  { label: "My applications", href: "/dashboard/applications", icon: Users },
+  { label: "My campaigns", href: "/dashboard/campaigns", icon: Megaphone },
+  { label: "Earnings & payouts", href: "/dashboard/payouts", icon: Wallet },
 ];
 
-function isActive(pathname: string, href: string) {
-   if (href === "/dashboard") {
-      return pathname === href;
-   }
+const businessLinks = [
+  { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Campaigns", href: "/dashboard/campaigns", icon: Megaphone },
+  { label: "Applications", href: "/dashboard/applications", icon: Users },
+  { label: "Analytics", href: "/dashboard/analytics", icon: Activity },
+  { label: "Organizations", href: "/dashboard/organizations", icon: Building2 },
+];
 
-   return pathname === href || pathname.startsWith(`${href}/`);
-}
+export default function DashboardSidebar({
+  collapsed,
+  mobileOpen,
+  mode,
+  selectedOrganizationId,
+  onToggle,
+  onCloseMobile,
+  onModeChange,
+  onOrganizationChange,
+}: DashboardSidebarProps) {
+  const pathname = usePathname();
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [organizationsLoading, setOrganizationsLoading] = useState(true);
+  const [organizationsError, setOrganizationsError] = useState("");
 
-export default function DashboardSidebar() {
-   const pathname = usePathname();
-   const [mobileOpen, setMobileOpen] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
 
-   function SidebarContents() {
-      return (
-         <>
-            <Link
-               href="/dashboard"
-               onClick={() => setMobileOpen(false)}
-               className="flex h-[76px] items-center gap-3 border-b border-white/[0.08] px-6"
-            >
-               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500 text-lg font-black text-white shadow-lg shadow-violet-500/20">
-                  A
-               </span>
-               <span className="text-xl font-black tracking-tight">
-                  AD<span className="text-violet-400">FLOW</span>
-               </span>
-            </Link>
+    async function loadOrganizations() {
+      try {
+        const response = await fetch("/api/organizations/mine", {
+          credentials: "same-origin",
+          cache: "no-store",
+        });
 
-            <div className="border-b border-white/[0.08] p-4">
-               <div className="rounded-xl border border-white/[0.07] bg-white/[0.035] px-3 py-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">
-                     Current workspace
-                  </p>
-                  <p className="mt-1 truncate text-sm font-semibold text-gray-200">
-                     My organization
-                  </p>
-                  <p className="mt-1 text-xs text-gray-500">
-                     Advertising workspace
-                  </p>
-               </div>
-            </div>
+        const data = await response.json();
 
-            <nav className="flex-1 space-y-7 overflow-y-auto px-3 py-6">
-               {navigation.map((group) => (
-                  <div key={group.title}>
-                     <p className="mb-3 px-3 text-[10px] font-bold tracking-[0.2em] text-gray-500">
-                        {group.title}
-                     </p>
+        if (!response.ok) {
+          throw new Error(data.error || "Unable to load organizations.");
+        }
 
-                     <div className="space-y-1">
-                        {group.items.map((item) => {
-                           const active = isActive(pathname, item.href);
+        const result = Array.isArray(data)
+          ? data
+          : Array.isArray(data.organizations)
+            ? data.organizations
+            : [];
 
-                           return (
-                              <Link
-                                 key={item.href}
-                                 href={item.href}
-                                 onClick={() => setMobileOpen(false)}
-                                 className={`group flex items-center gap-3 rounded-xl px-3 py-3 text-[13px] font-medium transition ${
-                                    active
-                                       ? "border border-violet-400/15 bg-violet-500/10 text-violet-300"
-                                       : "border border-transparent text-gray-400 hover:bg-white/[0.045] hover:text-white"
-                                 }`}
-                              >
-                                 <span
-                                    className={`flex h-5 w-5 items-center justify-center text-lg ${
-                                       active
-                                          ? "text-violet-300"
-                                          : "text-gray-500 group-hover:text-gray-300"
-                                    }`}
-                                    aria-hidden="true"
-                                 >
-                                    {item.icon}
-                                 </span>
-                                 <span className="flex-1">{item.label}</span>
-                                 {active && (
-                                    <span className="h-1.5 w-1.5 rounded-full bg-violet-400" />
-                                 )}
-                              </Link>
-                           );
-                        })}
-                     </div>
-                  </div>
-               ))}
-            </nav>
+        if (!cancelled) {
+          setOrganizations(result);
+          setOrganizationsError("");
 
-            <div className="border-t border-white/[0.08] p-4">
-               <Link
-                  href="/dashboard/organizations/new"
-                  onClick={() => setMobileOpen(false)}
-                  className="flex items-center justify-center gap-2 rounded-xl bg-violet-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-violet-400"
-               >
-                  <span aria-hidden="true">+</span>
-                  Create organization
-               </Link>
-               <p className="mt-4 text-center text-[10px] text-gray-600">
-                  ADFLOW · Creator partnerships
-               </p>
-            </div>
-         </>
-      );
-   }
+          if (
+            result.length > 0 &&
+            !result.some(
+              (organization: Organization) =>
+                organization._id === selectedOrganizationId,
+            )
+          ) {
+            onOrganizationChange(result[0]._id);
+          }
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setOrganizationsError(
+            error instanceof Error
+              ? error.message
+              : "Unable to load organizations.",
+          );
+        }
+      } finally {
+        if (!cancelled) setOrganizationsLoading(false);
+      }
+    }
 
-   return (
-      <>
-         <aside className="sticky top-0 hidden h-screen w-[250px] shrink-0 flex-col border-r border-white/[0.08] bg-[#0b0e16] lg:flex">
-            <SidebarContents />
-         </aside>
+    void loadOrganizations();
 
-         <div className="fixed left-4 top-[88px] z-40 lg:hidden">
+    return () => {
+      cancelled = true;
+    };
+  }, [onOrganizationChange, selectedOrganizationId]);
+
+  const links = mode === "personal" ? personalLinks : businessLinks;
+
+  function isActive(href: string) {
+    if (href === "/dashboard") return pathname === href;
+
+    return pathname === href || pathname.startsWith(`${href}/`);
+  }
+
+  const selectedOrganization = organizations.find(
+    (organization) => organization._id === selectedOrganizationId,
+  );
+
+  return (
+    <>
+      {mobileOpen && (
+        <button
+          type="button"
+          aria-label="Close navigation"
+          onClick={onCloseMobile}
+          className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm lg:hidden"
+        />
+      )}
+
+      <aside
+        className={[
+          "fixed bottom-0 left-0 top-16 z-[70] flex flex-col",
+          "border-r border-white/[0.08] bg-[#0b0e17]",
+          "transition-[width,transform] duration-200 ease-out",
+          collapsed ? "w-[76px]" : "w-[264px]",
+          mobileOpen
+            ? "translate-x-0"
+            : "-translate-x-full lg:translate-x-0",
+        ].join(" ")}
+      >
+        {/* Workspace selector */}
+        <div className="border-b border-white/[0.07] p-3">
+          <div className="mb-2 flex items-center justify-between px-2">
+            {!collapsed && (
+              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                Workspace
+              </span>
+            )}
+
             <button
-               type="button"
-               onClick={() => setMobileOpen(true)}
-               aria-label="Open navigation menu"
-               aria-expanded={mobileOpen}
-               className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-[#151925] text-lg text-white shadow-lg"
+              type="button"
+              onClick={onCloseMobile}
+              aria-label="Close sidebar"
+              className="rounded-lg p-1.5 text-slate-400 hover:bg-white/[0.06] hover:text-white lg:hidden"
             >
-               ☰
+              <X size={17} />
             </button>
-         </div>
+          </div>
 
-         {mobileOpen && (
-            <div className="fixed inset-0 z-[60] lg:hidden">
-               <button
-                  type="button"
-                  aria-label="Close navigation menu"
-                  onClick={() => setMobileOpen(false)}
-                  className="absolute inset-0 bg-black/70"
-               />
-               <aside className="absolute inset-y-0 left-0 flex w-[280px] max-w-[85vw] flex-col border-r border-white/10 bg-[#0b0e16] shadow-2xl">
-                  <div className="flex items-center justify-end border-b border-white/[0.08] px-4 py-3">
-                     <button
-                        type="button"
-                        onClick={() => setMobileOpen(false)}
-                        aria-label="Close menu"
-                        className="rounded-lg px-3 py-2 text-gray-400 hover:bg-white/5 hover:text-white"
-                     >
-                        ✕
-                     </button>
-                  </div>
-                  <SidebarContents />
-               </aside>
+          <div className={`grid ${collapsed ? "grid-cols-1" : "grid-cols-2"} gap-1 rounded-xl border border-white/[0.07] bg-[#070a12] p-1`}>
+            <button
+              type="button"
+              title="Personal workspace"
+              onClick={() => onModeChange("personal")}
+              className={[
+                "flex min-w-0 items-center justify-center gap-2 rounded-lg px-2 py-2.5 text-xs font-medium transition",
+                mode === "personal"
+                  ? "bg-violet-500/15 text-violet-200 ring-1 ring-violet-400/20"
+                  : "text-slate-400 hover:text-white",
+              ].join(" ")}
+            >
+              <UserRound size={16} />
+              {!collapsed && <span>Personal</span>}
+            </button>
+
+            <button
+              type="button"
+              title="Business workspace"
+              onClick={() => onModeChange("business")}
+              className={[
+                "flex min-w-0 items-center justify-center gap-2 rounded-lg px-2 py-2.5 text-xs font-medium transition",
+                mode === "business"
+                  ? "bg-violet-500/15 text-violet-200 ring-1 ring-violet-400/20"
+                  : "text-slate-400 hover:text-white",
+              ].join(" ")}
+            >
+              <Building2 size={16} />
+              <span>Business</span>
+            </button>
+          </div>
+
+          {mode === "business" && !collapsed && (
+            <div className="mt-3">
+              <label
+                htmlFor="sidebar-organization"
+                className="mb-1.5 block text-xs text-slate-400"
+              >
+                Active organization
+              </label>
+
+              <div className="relative">
+                <select
+                  id="sidebar-organization"
+                  value={selectedOrganizationId}
+                  onChange={(event) =>
+                    onOrganizationChange(event.target.value)
+                  }
+                  disabled={organizationsLoading || organizations.length === 0}
+                  className="w-full appearance-none rounded-xl border border-white/[0.08] bg-[#111522] py-2.5 pl-3 pr-8 text-xs text-slate-200 outline-none transition focus:border-violet-400/50 disabled:opacity-50"
+                >
+                  {organizationsLoading && (
+                    <option value="">Loading organizations...</option>
+                  )}
+
+                  {!organizationsLoading && organizations.length === 0 && (
+                    <option value="">No organizations yet</option>
+                  )}
+
+                  {organizations.map((organization) => (
+                    <option key={organization._id} value={organization._id}>
+                      {organization.name}
+                    </option>
+                  ))}
+                </select>
+
+                <ChevronDown
+                  size={14}
+                  className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500"
+                />
+              </div>
+
+              {organizationsError && (
+                <p className="mt-2 text-xs text-rose-300">
+                  {organizationsError}
+                </p>
+              )}
+
+              {!organizationsLoading &&
+                organizations.length === 0 &&
+                !organizationsError && (
+                  <Link
+                    href="/dashboard/organizations/new"
+                    onClick={onCloseMobile}
+                    className="mt-2 block text-xs text-violet-300 hover:text-violet-200"
+                  >
+                    + Create organization
+                  </Link>
+                )}
+
+              {selectedOrganization && (
+                <p className="mt-2 truncate px-1 text-[10px] text-slate-500">
+                  {selectedOrganization.role
+                    ? `Role: ${selectedOrganization.role}`
+                    : selectedOrganization.type || "Organization"}
+                </p>
+              )}
             </div>
-         )}
-      </>
-   );
+          )}
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-5">
+          {!collapsed && (
+            <p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+              {mode === "personal" ? "Your workspace" : "Manage business"}
+            </p>
+          )}
+
+          {links.map((item) => {
+            const Icon = item.icon;
+            const active = isActive(item.href);
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onCloseMobile}
+                title={collapsed ? item.label : undefined}
+                aria-current={active ? "page" : undefined}
+                className={[
+                  "group relative flex items-center gap-3 rounded-xl px-3 py-3 text-sm transition-colors",
+                  collapsed ? "justify-center" : "",
+                  active
+                    ? "bg-violet-500/12 font-medium text-violet-200"
+                    : "text-slate-400 hover:bg-white/[0.045] hover:text-slate-100",
+                ].join(" ")}
+              >
+                {active && (
+                  <span className="absolute bottom-2 left-0 top-2 w-[3px] rounded-r-full bg-violet-400" />
+                )}
+
+                <Icon
+                  size={19}
+                  strokeWidth={active ? 2.2 : 1.8}
+                  className={
+                    active
+                      ? "shrink-0 text-violet-300"
+                      : "shrink-0 text-slate-500 group-hover:text-slate-200"
+                  }
+                />
+
+                {!collapsed && <span className="truncate">{item.label}</span>}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Bottom links and collapse */}
+        <div className="border-t border-white/[0.07] p-3">
+          <Link
+            href="/dashboard/settings"
+            onClick={onCloseMobile}
+            title={collapsed ? "Settings" : undefined}
+            className={[
+              "flex items-center gap-3 rounded-xl px-3 py-3 text-sm transition",
+              isActive("/dashboard/settings")
+                ? "bg-violet-500/12 text-violet-200"
+                : "text-slate-400 hover:bg-white/[0.045] hover:text-white",
+              collapsed ? "justify-center" : "",
+            ].join(" ")}
+          >
+            <Settings size={19} />
+            {!collapsed && <span>Settings</span>}
+          </Link>
+
+          <Link
+            href="/help"
+            onClick={onCloseMobile}
+            title={collapsed ? "Help" : undefined}
+            className={[
+              "mt-1 flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-slate-400 transition hover:bg-white/[0.045] hover:text-white",
+              collapsed ? "justify-center" : "",
+            ].join(" ")}
+          >
+            <CircleHelp size={19} />
+            {!collapsed && <span>Help & support</span>}
+          </Link>
+
+          <button
+            type="button"
+            onClick={onToggle}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="mt-3 hidden w-full items-center justify-center gap-2 rounded-xl border border-white/[0.07] py-2.5 text-xs text-slate-400 transition hover:bg-white/[0.04] hover:text-white lg:flex"
+          >
+            {collapsed ? (
+              <ChevronRight size={17} />
+            ) : (
+              <>
+                <ChevronLeft size={17} />
+                <span>Collapse sidebar</span>
+              </>
+            )}
+          </button>
+        </div>
+      </aside>
+    </>
+  );
 }
