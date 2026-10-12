@@ -128,12 +128,10 @@ export default function DashboardSidebar({
     };
   }, [onOrganizationChange, selectedOrganizationId]);
 
-  // Close the workspace menu when collapsed flips or the mobile drawer closes.
   useEffect(() => {
     setWorkspaceMenuOpen(false);
   }, [collapsed, mobileOpen]);
 
-  // Outside-click + Escape to dismiss the workspace menu.
   useEffect(() => {
     if (!workspaceMenuOpen) return;
 
@@ -161,7 +159,6 @@ export default function DashboardSidebar({
   const selectedOrganization = organizations.find(
     (org) => org._id === selectedOrganizationId,
   );
-  const ModeIcon = mode === "personal" ? UserRound : Building2;
 
   function isActive(href: string) {
     if (href === "/dashboard") return pathname === href;
@@ -177,6 +174,22 @@ export default function DashboardSidebar({
     onModeChange(nextMode);
     setWorkspaceMenuOpen(false);
   }
+
+  function selectOrganization(orgId: string) {
+    onModeChange("business");
+    onOrganizationChange(orgId);
+    setWorkspaceMenuOpen(false);
+  }
+
+  // ============================================================
+  // Shared button classes for the collapsed rail squares
+  // ============================================================
+  const railBase =
+    "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-sm font-semibold transition";
+  const railInactive =
+    "border-white/[0.08] bg-white/[0.03] text-slate-400 hover:border-white/20 hover:bg-white/[0.06] hover:text-white";
+  const railActive =
+    "border-violet-400/60 bg-violet-500/20 text-violet-100 ring-2 ring-violet-400/30";
 
   return (
     <>
@@ -199,165 +212,217 @@ export default function DashboardSidebar({
           collapsed ? "w-[76px]" : "w-[264px]",
         ].join(" ")}
       >
-        {/* Workspace switcher */}
-        <div
-          ref={workspaceRef}
-          className="shrink-0 border-b border-white/[0.07] p-3"
-        >
-          <div className="relative">
-            <button
-              type="button"
-              title={
-                mode === "personal" ? "Personal workspace" : "Business workspace"
-              }
-              aria-expanded={workspaceMenuOpen}
-              aria-haspopup="menu"
-              onClick={() => setWorkspaceMenuOpen((value) => !value)}
-              className={[
-                "flex w-full items-center gap-3 rounded-xl border border-transparent p-2 text-left transition",
-                "hover:border-white/[0.08] hover:bg-white/[0.04]",
-                collapsed ? "justify-center px-0" : "",
-              ].join(" ")}
-            >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-violet-400/20 bg-violet-500/15 text-violet-200">
-                <ModeIcon size={18} />
-              </span>
-
-              <span
-                data-sidebar-label
-                className="min-w-0 flex-1 overflow-hidden"
-              >
-                <span className="block truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                  Workspace
-                </span>
-                <span className="mt-0.5 block truncate text-sm font-medium text-slate-100">
-                  {mode === "personal"
-                    ? "Personal"
-                    : selectedOrganization?.name || "Business"}
-                </span>
-              </span>
-
-              <ChevronDown
-                data-sidebar-label
-                size={15}
-                className="shrink-0 text-slate-500"
-              />
-            </button>
-
-            {workspaceMenuOpen && (
-              <div
-                role="menu"
+        {/* ============ Workspace switcher ============ */}
+        {collapsed ? (
+          /* ---------- Collapsed: vertical rail ---------- */
+          <div className="shrink-0 border-b border-white/[0.07] p-2">
+            <div className="flex flex-col items-center gap-2">
+              {/* Personal workspace */}
+              <button
+                type="button"
+                onClick={() => selectWorkspace("personal")}
+                title="Personal workspace"
+                aria-label="Personal workspace"
+                aria-current={mode === "personal" ? "true" : undefined}
                 className={[
-                  "absolute z-[200] w-64 rounded-2xl border border-white/10 bg-[#191c24] p-2 shadow-2xl shadow-black/60",
-                  collapsed
-                    ? "left-[calc(100%+10px)] top-0"
-                    : "left-0 top-[calc(100%+8px)]",
+                  railBase,
+                  mode === "personal" ? railActive : railInactive,
                 ].join(" ")}
               >
-                <p className="px-2 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                  Switch workspace
-                </p>
+                <UserRound size={18} />
+              </button>
 
-                <button
-                  type="button"
-                  onClick={() => selectWorkspace("personal")}
-                  className={[
-                    "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition",
-                    mode === "personal"
-                      ? "bg-violet-500/15 text-violet-100"
-                      : "text-slate-200 hover:bg-white/[0.06]",
-                  ].join(" ")}
-                >
-                  <UserRound size={17} className="shrink-0 text-slate-400" />
-                  <span className="flex-1 text-left">Personal</span>
-                  {mode === "personal" && (
-                    <Check size={15} className="shrink-0 text-violet-300" />
+              {/* Business workspaces — one square per organization */}
+              {organizations.map((org) => {
+                const active =
+                  mode === "business" && org._id === selectedOrganizationId;
+                const initial = (org.name || "?").charAt(0).toUpperCase();
+
+                return (
+                  <button
+                    key={org._id}
+                    type="button"
+                    onClick={() => selectOrganization(org._id)}
+                    title={org.name}
+                    aria-label={org.name}
+                    aria-current={active ? "true" : undefined}
+                    className={[
+                      railBase,
+                      active ? railActive : railInactive,
+                    ].join(" ")}
+                  >
+                    {initial}
+                  </button>
+                );
+              })}
+
+              {/* Add new organization */}
+              <Link
+                href="/dashboard/organizations/new"
+                title="Create organization"
+                aria-label="Create organization"
+                onClick={navigateClose}
+                className={[
+                  railBase,
+                  "border-dashed border-white/[0.12] bg-transparent text-slate-500",
+                  "hover:border-violet-400/40 hover:bg-white/[0.04] hover:text-violet-200",
+                ].join(" ")}
+              >
+                <Plus size={18} />
+              </Link>
+
+              {/* Loading / error hints (compact) */}
+              {organizationsLoading && (
+                <span
+                  aria-hidden="true"
+                  className="mt-1 h-1.5 w-1.5 animate-pulse rounded-full bg-violet-400/60"
+                />
+              )}
+            </div>
+          </div>
+        ) : (
+          /* ---------- Expanded: existing dropdown ---------- */
+          <div className="shrink-0 border-b border-white/[0.07] p-3">
+            <div className="relative" ref={workspaceRef}>
+              <button
+                type="button"
+                title={
+                  mode === "personal"
+                    ? "Personal workspace"
+                    : "Business workspace"
+                }
+                aria-expanded={workspaceMenuOpen}
+                aria-haspopup="menu"
+                onClick={() => setWorkspaceMenuOpen((value) => !value)}
+                className={[
+                  "flex w-full items-center gap-3 rounded-xl border border-transparent p-2 text-left transition",
+                  "hover:border-white/[0.08] hover:bg-white/[0.04]",
+                ].join(" ")}
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-violet-400/20 bg-violet-500/15 text-violet-200">
+                  {mode === "personal" ? (
+                    <UserRound size={18} />
+                  ) : (
+                    <Building2 size={18} />
                   )}
-                </button>
+                </span>
 
-                <button
-                  type="button"
-                  onClick={() => selectWorkspace("business")}
+                <span className="min-w-0 flex-1 overflow-hidden">
+                  <span className="block truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                    Workspace
+                  </span>
+                  <span className="mt-0.5 block truncate text-sm font-medium text-slate-100">
+                    {mode === "personal"
+                      ? "Personal"
+                      : selectedOrganization?.name || "Business"}
+                  </span>
+                </span>
+
+                <ChevronDown
+                  size={15}
                   className={[
-                    "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition",
-                    mode === "business"
-                      ? "bg-violet-500/15 text-violet-100"
-                      : "text-slate-200 hover:bg-white/[0.06]",
+                    "shrink-0 text-slate-500 transition-transform",
+                    workspaceMenuOpen ? "rotate-180" : "",
                   ].join(" ")}
+                />
+              </button>
+
+              {workspaceMenuOpen && (
+                <div
+                  role="menu"
+                  className="absolute left-0 top-[calc(100%+8px)] z-[200] w-64 rounded-2xl border border-white/10 bg-[#191c24] p-2 shadow-2xl shadow-black/60"
                 >
-                  <Building2 size={17} className="shrink-0 text-slate-400" />
-                  <span className="flex-1 text-left">Business</span>
-                  {mode === "business" && (
-                    <Check size={15} className="shrink-0 text-violet-300" />
-                  )}
-                </button>
+                  <p className="px-2 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                    Switch workspace
+                  </p>
 
-                {mode === "business" && (
-                  <div className="mt-2 border-t border-white/[0.08] pt-2">
-                    <label
-                      htmlFor="sidebar-organization"
-                      className="mb-1 block px-2 text-xs text-slate-500"
-                    >
-                      Organization
-                    </label>
-                    <select
-                      id="sidebar-organization"
-                      value={selectedOrganizationId}
-                      disabled={
-                        organizationsLoading || organizations.length === 0
-                      }
-                      onChange={(event) =>
-                        onOrganizationChange(event.target.value)
-                      }
-                      className="w-full rounded-lg border border-white/10 bg-[#101219] px-2 py-2 text-xs text-slate-200 outline-none focus:border-violet-400/50 disabled:opacity-50"
-                    >
-                      {organizationsLoading && (
-                        <option value="">Loading…</option>
-                      )}
-                      {!organizationsLoading &&
-                        organizations.length === 0 && (
-                          <option value="">No organizations yet</option>
-                        )}
-                      {organizations.map((org) => (
-                        <option key={org._id} value={org._id}>
-                          {org.name}
-                        </option>
-                      ))}
-                    </select>
-
-                    {organizationsError && (
-                      <p className="mt-2 text-xs text-rose-300">
-                        {organizationsError}
-                      </p>
+                  <button
+                    type="button"
+                    onClick={() => selectWorkspace("personal")}
+                    className={[
+                      "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition",
+                      mode === "personal"
+                        ? "bg-violet-500/15 text-violet-100"
+                        : "text-slate-200 hover:bg-white/[0.06]",
+                    ].join(" ")}
+                  >
+                    <UserRound size={17} className="shrink-0 text-slate-400" />
+                    <span className="flex-1 text-left">Personal</span>
+                    {mode === "personal" && (
+                      <Check size={15} className="shrink-0 text-violet-300" />
                     )}
+                  </button>
 
-                    {!organizationsLoading &&
-                      organizations.length === 0 && (
-                        <Link
-                          href="/dashboard/organizations/new"
-                          onClick={navigateClose}
-                          className="mt-2 flex items-center gap-2 rounded-lg px-2 py-2 text-xs text-violet-300 hover:bg-white/[0.05]"
-                        >
-                          <Plus size={14} className="shrink-0" />
-                          Create organization
-                        </Link>
-                      )}
+                  {organizations.length > 0 && (
+                    <p className="mt-3 px-2 pb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                      Organizations
+                    </p>
+                  )}
+
+                  {organizations.map((org) => {
+                    const active =
+                      mode === "business" &&
+                      org._id === selectedOrganizationId;
+                    return (
+                      <button
+                        key={org._id}
+                        type="button"
+                        onClick={() => selectOrganization(org._id)}
+                        className={[
+                          "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition",
+                          active
+                            ? "bg-violet-500/15 text-violet-100"
+                            : "text-slate-200 hover:bg-white/[0.06]",
+                        ].join(" ")}
+                      >
+                        <Building2
+                          size={17}
+                          className="shrink-0 text-slate-400"
+                        />
+                        <span className="min-w-0 flex-1 truncate text-left">
+                          {org.name}
+                        </span>
+                        {active && (
+                          <Check
+                            size={15}
+                            className="shrink-0 text-violet-300"
+                          />
+                        )}
+                      </button>
+                    );
+                  })}
+
+                  <div className="mt-2 border-t border-white/[0.08] pt-2">
+                    <Link
+                      href="/dashboard/organizations/new"
+                      onClick={navigateClose}
+                      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-violet-300 transition hover:bg-white/[0.05]"
+                    >
+                      <Plus size={16} className="shrink-0" />
+                      Create organization
+                    </Link>
                   </div>
-                )}
-              </div>
+
+                  {organizationsError && (
+                    <p className="mt-2 px-3 text-xs text-rose-300">
+                      {organizationsError}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {mode === "business" && selectedOrganization && (
+              <p className="mt-2 truncate px-3 text-[10px] text-slate-500">
+                {selectedOrganization.role
+                  ? `Role: ${selectedOrganization.role}`
+                  : selectedOrganization.type || "Organization"}
+              </p>
             )}
           </div>
+        )}
 
-          {!collapsed && mode === "business" && selectedOrganization && (
-            <p className="mt-2 truncate px-3 text-[10px] text-slate-500">
-              {selectedOrganization.role
-                ? `Role: ${selectedOrganization.role}`
-                : selectedOrganization.type || "Organization"}
-            </p>
-          )}
-        </div>
-
-        {/* Navigation */}
+        {/* ============ Navigation ============ */}
         <nav className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-2 py-4">
           {!collapsed && (
             <p className="mb-3 truncate px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
@@ -405,7 +470,7 @@ export default function DashboardSidebar({
           })}
         </nav>
 
-        {/* Footer */}
+        {/* ============ Footer ============ */}
         <div className="shrink-0 space-y-1 border-t border-white/[0.07] p-2">
           <Link
             href="/dashboard/settings"
@@ -494,75 +559,58 @@ export default function DashboardSidebar({
           </button>
         </div>
 
-        <div className="grid shrink-0 grid-cols-2 gap-2 border-b border-white/[0.08] p-3">
+        {/* Mobile workspace rail (horizontal) */}
+        <div className="flex shrink-0 gap-2 overflow-x-auto border-b border-white/[0.08] p-3">
           <button
             type="button"
             onClick={() => selectWorkspace("personal")}
+            title="Personal workspace"
             className={[
-              "flex items-center justify-center gap-2 rounded-xl border px-3 py-3 text-xs font-medium",
-              mode === "personal"
-                ? "border-violet-400/30 bg-violet-500/15 text-violet-200"
-                : "border-white/[0.08] text-slate-400",
+              railBase,
+              mode === "personal" ? railActive : railInactive,
             ].join(" ")}
           >
-            <UserRound size={16} /> Personal
+            <UserRound size={18} />
           </button>
-          <button
-            type="button"
-            onClick={() => selectWorkspace("business")}
+
+          {organizations.map((org) => {
+            const active =
+              mode === "business" && org._id === selectedOrganizationId;
+            const initial = (org.name || "?").charAt(0).toUpperCase();
+            return (
+              <button
+                key={org._id}
+                type="button"
+                onClick={() => selectOrganization(org._id)}
+                title={org.name}
+                className={[
+                  railBase,
+                  active ? railActive : railInactive,
+                ].join(" ")}
+              >
+                {initial}
+              </button>
+            );
+          })}
+
+          <Link
+            href="/dashboard/organizations/new"
+            title="Create organization"
+            onClick={navigateClose}
             className={[
-              "flex items-center justify-center gap-2 rounded-xl border px-3 py-3 text-xs font-medium",
-              mode === "business"
-                ? "border-violet-400/30 bg-violet-500/15 text-violet-200"
-                : "border-white/[0.08] text-slate-400",
+              railBase,
+              "border-dashed border-white/[0.12] bg-transparent text-slate-500",
+              "hover:border-violet-400/40 hover:bg-white/[0.04] hover:text-violet-200",
             ].join(" ")}
           >
-            <Building2 size={16} /> Business
-          </button>
+            <Plus size={18} />
+          </Link>
         </div>
 
-        {mode === "business" && (
-          <div className="shrink-0 border-b border-white/[0.08] p-3">
-            <label
-              htmlFor="mobile-sidebar-organization"
-              className="mb-2 block text-xs text-slate-400"
-            >
-              Active organization
-            </label>
-            <select
-              id="mobile-sidebar-organization"
-              value={selectedOrganizationId}
-              disabled={organizationsLoading || organizations.length === 0}
-              onChange={(event) => onOrganizationChange(event.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-[#0b0e17] px-3 py-3 text-sm text-slate-200 outline-none focus:border-violet-400/50 disabled:opacity-50"
-            >
-              {organizationsLoading && (
-                <option value="">Loading organizations…</option>
-              )}
-              {!organizationsLoading && organizations.length === 0 && (
-                <option value="">No organizations yet</option>
-              )}
-              {organizations.map((org) => (
-                <option key={org._id} value={org._id}>
-                  {org.name}
-                </option>
-              ))}
-            </select>
-            {organizationsError && (
-              <p className="mt-2 text-xs text-rose-300">
-                {organizationsError}
-              </p>
-            )}
-            {!organizationsLoading && organizations.length === 0 && (
-              <Link
-                href="/dashboard/organizations/new"
-                onClick={navigateClose}
-                className="mt-3 flex items-center gap-2 text-sm text-violet-300"
-              >
-                <Plus size={16} /> Create organization
-              </Link>
-            )}
-          </div>
+        {organizationsError && (
+          <p className="shrink-0 px-3 pt-2 text-xs text-rose-300">
+            {organizationsError}
+          </p>
         )}
 
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
