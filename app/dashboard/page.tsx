@@ -19,6 +19,17 @@ export default function DashboardPage() {
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState("all");
 
+  function handleNewCampaign() {
+    if (loading) return;
+
+    if (organizations.length === 0) {
+      router.push("/dashboard/organizations/new?next=campaign");
+      return;
+    }
+
+    setShowForm(true);
+  }
+
   const loadData = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -48,7 +59,18 @@ export default function DashboardPage() {
     }
   }, [router]);
 
-  useEffect(() => { void loadData(); }, [loadData]);
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get("createCampaign") === "1") {
+      setShowForm(true);
+      router.replace("/dashboard");
+    }
+  }, [router]);
 
   const stats = useMemo(() => ({
     total: campaigns.length,
@@ -69,7 +91,7 @@ export default function DashboardPage() {
           </div>
           <div className="flex flex-wrap gap-3">
             <Link href="/marketplace" className="rounded-xl border border-white/10 px-4 py-3 text-sm font-semibold text-gray-200 hover:border-violet-400/40">Creator marketplace</Link>
-            <button onClick={() => setShowForm((value) => !value)} className="rounded-xl bg-violet-500 px-5 py-3 text-sm font-semibold text-white hover:bg-violet-400">
+            <button onClick={() => showForm ? setShowForm(false) : handleNewCampaign()} className="rounded-xl bg-violet-500 px-5 py-3 text-sm font-semibold text-white hover:bg-violet-400">
               {showForm ? "Close form" : "+ New campaign"}
             </button>
           </div>
@@ -124,7 +146,7 @@ export default function DashboardPage() {
               <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-400">
                 {campaigns.length ? "Choose another status to see more campaigns." : "Create your first campaign to start working with creators."}
               </p>
-              {!campaigns.length && <button onClick={() => setShowForm(true)} className="mt-5 rounded-xl bg-violet-500 px-5 py-3 text-sm font-semibold hover:bg-violet-400">Create your first campaign</button>}
+              {!campaigns.length && <button onClick={handleNewCampaign} disabled={loading} className="mt-5 rounded-xl bg-violet-500 px-5 py-3 text-sm font-semibold hover:bg-violet-400">Create your first campaign</button>}
             </div>
           ) : (
             <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
