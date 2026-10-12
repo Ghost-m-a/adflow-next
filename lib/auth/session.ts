@@ -1,5 +1,7 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { connectToDatabase } from "@/lib/db/mongodb";
+import User from "@/models/User";
 
 const SESSION_SECRET = process.env.SESSION_SECRET;
 
@@ -17,6 +19,7 @@ export type SessionPayload = {
    userId: string;
    username: string;
    email: string;
+   sessionVersion: number;
 };
 
 export async function createSessionToken(
@@ -31,6 +34,7 @@ export async function createSessionToken(
    })
       .setProtectedHeader({ alg: "HS256" })
       .setSubject(payload.userId)
+      .setClaim("sessionVersion", payload.sessionVersion ?? 0)
       .setIssuedAt()
       .setExpirationTime(expiresIn)
       .sign(secretKey);
@@ -56,6 +60,10 @@ export async function verifySessionToken(
          userId: payload.sub,
          username: payload.username,
          email: payload.email,
+         sessionVersion:
+            typeof payload.sessionVersion === "number"
+               ? payload.sessionVersion
+               : 0,
       };
    } catch {
       return null;
@@ -70,7 +78,29 @@ export async function getSession(): Promise<SessionPayload | null> {
       return null;
    }
 
-   return verifySessionToken(token);
+   const session = await verifySessionToken(token);
+
+   if (!session) return null;
+
+   try {
+      await connectToDatabase();
+
+      const user = await User.findById(session.userId)
+         .select("_id isActive sessionVersion")
+         .lean();
+
+      if (
+         !user ||
+         !user.isActive ||
+         Number(user.sessionVersion ?? 0) !== session.sessionVersion
+      ) {
+         return null;
+      }
+
+      return session;
+   } catch {
+      return null;
+   }
 }
 
 export function sessionCookieOptions(rememberMe: boolean) {
