@@ -92,7 +92,6 @@ export async function POST(request: NextRequest) {
             userId: user._id.toString(),
             username: user.username,
             email: user.email,
-            sessionVersion: user.sessionVersion ?? 0,
          },
          false,
       );
