@@ -3,14 +3,12 @@
 import {
   Activity,
   Building2,
-  Check,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   CircleHelp,
   Compass,
+  Home,
   LayoutDashboard,
   Megaphone,
+  MessageSquare,
   Plus,
   Settings,
   UserRound,
@@ -20,7 +18,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 type Organization = {
   _id: string;
@@ -44,17 +42,17 @@ type DashboardSidebarProps = {
 };
 
 const personalLinks = [
-  { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Creator marketplace", href: "/marketplace", icon: Compass },
-  { label: "My applications", href: "/dashboard/applications", icon: Users },
+  { label: "Home", href: "/dashboard", icon: Home },
+  { label: "Marketplace", href: "/marketplace", icon: Compass },
+  { label: "Applications", href: "/dashboard/applications", icon: Users },
   { label: "My campaigns", href: "/dashboard/campaigns", icon: Megaphone },
   { label: "Earnings & payouts", href: "/dashboard/payouts", icon: Wallet },
 ];
 
 const businessLinks = [
-  { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Home", href: "/dashboard", icon: Home },
   { label: "Campaigns", href: "/dashboard/campaigns", icon: Megaphone },
-  { label: "Applications", href: "/dashboard/applications", icon: Users },
+  { label: "Applications", href: "/dashboard/applications", icon: MessageSquare },
   { label: "Analytics", href: "/dashboard/analytics", icon: Activity },
   { label: "Organizations", href: "/dashboard/organizations", icon: Building2 },
 ];
@@ -70,12 +68,9 @@ export default function DashboardSidebar({
   onOrganizationChange,
 }: DashboardSidebarProps) {
   const pathname = usePathname();
-  const workspaceRef = useRef<HTMLDivElement>(null);
-
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [organizationsLoading, setOrganizationsLoading] = useState(true);
   const [organizationsError, setOrganizationsError] = useState("");
-  const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -128,33 +123,6 @@ export default function DashboardSidebar({
     };
   }, [onOrganizationChange, selectedOrganizationId]);
 
-  useEffect(() => {
-    setWorkspaceMenuOpen(false);
-  }, [collapsed, mobileOpen]);
-
-  useEffect(() => {
-    if (!workspaceMenuOpen) return;
-
-    function handlePointerDown(event: PointerEvent) {
-      if (
-        workspaceRef.current &&
-        !workspaceRef.current.contains(event.target as Node)
-      ) {
-        setWorkspaceMenuOpen(false);
-      }
-    }
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setWorkspaceMenuOpen(false);
-    }
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [workspaceMenuOpen]);
-
   const links = mode === "personal" ? personalLinks : businessLinks;
   const selectedOrganization = organizations.find(
     (org) => org._id === selectedOrganizationId,
@@ -165,27 +133,18 @@ export default function DashboardSidebar({
     return pathname === href || pathname.startsWith(`${href}/`);
   }
 
-  function navigateClose() {
-    onCloseMobile();
-    setWorkspaceMenuOpen(false);
-  }
-
   function selectWorkspace(nextMode: WorkspaceMode) {
     onModeChange(nextMode);
-    setWorkspaceMenuOpen(false);
   }
 
   function selectOrganization(orgId: string) {
     onModeChange("business");
     onOrganizationChange(orgId);
-    setWorkspaceMenuOpen(false);
   }
 
-  // ============================================================
-  // Shared button classes for the collapsed rail squares
-  // ============================================================
+  // ---- Rail square styling ----
   const railBase =
-    "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-sm font-semibold transition";
+    "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-sm font-semibold transition";
   const railInactive =
     "border-white/[0.08] bg-white/[0.03] text-slate-400 hover:border-white/20 hover:bg-white/[0.06] hover:text-white";
   const railActive =
@@ -212,16 +171,26 @@ export default function DashboardSidebar({
           collapsed ? "w-[76px]" : "w-[264px]",
         ].join(" ")}
       >
-        {/* ============ Workspace switcher ============ */}
-        {collapsed ? (
-          /* ---------- Collapsed: vertical rail ---------- */
-          <div className="shrink-0 border-b border-white/[0.07] p-2">
-            <div className="flex flex-col items-center gap-2">
-              {/* Personal workspace */}
+        {/* ============ Workspace rail ============ */}
+        <div
+          className={[
+            "shrink-0 border-b border-white/[0.07]",
+            collapsed ? "p-2" : "px-3 pt-3 pb-2",
+          ].join(" ")}
+        >
+          <div
+            className={[
+              "flex gap-2",
+              collapsed
+                ? "flex-col items-center"
+                : "items-center overflow-x-auto pb-1",
+            ].join(" ")}
+          >
+            {/* Personal workspace */}
+            <div className="group relative">
               <button
                 type="button"
                 onClick={() => selectWorkspace("personal")}
-                title="Personal workspace"
                 aria-label="Personal workspace"
                 aria-current={mode === "personal" ? "true" : undefined}
                 className={[
@@ -232,18 +201,24 @@ export default function DashboardSidebar({
                 <UserRound size={18} />
               </button>
 
-              {/* Business workspaces — one square per organization */}
-              {organizations.map((org) => {
-                const active =
-                  mode === "business" && org._id === selectedOrganizationId;
-                const initial = (org.name || "?").charAt(0).toUpperCase();
+              {collapsed && (
+                <span className="pointer-events-none absolute left-full top-1/2 z-[200] ml-2 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-slate-900 shadow-lg group-hover:block">
+                  Personal
+                </span>
+              )}
+            </div>
 
-                return (
+            {/* Business workspaces */}
+            {organizations.map((org) => {
+              const active =
+                mode === "business" && org._id === selectedOrganizationId;
+              const initial = (org.name || "?").charAt(0).toUpperCase();
+
+              return (
+                <div key={org._id} className="group relative">
                   <button
-                    key={org._id}
                     type="button"
                     onClick={() => selectOrganization(org._id)}
-                    title={org.name}
                     aria-label={org.name}
                     aria-current={active ? "true" : undefined}
                     className={[
@@ -253,15 +228,22 @@ export default function DashboardSidebar({
                   >
                     {initial}
                   </button>
-                );
-              })}
 
-              {/* Add new organization */}
+                  {collapsed && (
+                    <span className="pointer-events-none absolute left-full top-1/2 z-[200] ml-2 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-slate-900 shadow-lg group-hover:block">
+                      {org.name}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Create business */}
+            <div className="group relative">
               <Link
                 href="/dashboard/organizations/new"
-                title="Create organization"
-                aria-label="Create organization"
-                onClick={navigateClose}
+                aria-label="Start a business"
+                onClick={onCloseMobile}
                 className={[
                   railBase,
                   "border-dashed border-white/[0.12] bg-transparent text-slate-500",
@@ -271,261 +253,160 @@ export default function DashboardSidebar({
                 <Plus size={18} />
               </Link>
 
-              {/* Loading / error hints (compact) */}
-              {organizationsLoading && (
-                <span
-                  aria-hidden="true"
-                  className="mt-1 h-1.5 w-1.5 animate-pulse rounded-full bg-violet-400/60"
-                />
+              {collapsed && (
+                <span className="pointer-events-none absolute left-full top-1/2 z-[200] ml-2 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-slate-900 shadow-lg group-hover:block">
+                  Start a business
+                </span>
               )}
             </div>
-          </div>
-        ) : (
-          /* ---------- Expanded: existing dropdown ---------- */
-          <div className="shrink-0 border-b border-white/[0.07] p-3">
-            <div className="relative" ref={workspaceRef}>
-              <button
-                type="button"
-                title={
-                  mode === "personal"
-                    ? "Personal workspace"
-                    : "Business workspace"
-                }
-                aria-expanded={workspaceMenuOpen}
-                aria-haspopup="menu"
-                onClick={() => setWorkspaceMenuOpen((value) => !value)}
+
+            {/* Loading hint */}
+            {organizationsLoading && (
+              <span
+                aria-hidden="true"
                 className={[
-                  "flex w-full items-center gap-3 rounded-xl border border-transparent p-2 text-left transition",
-                  "hover:border-white/[0.08] hover:bg-white/[0.04]",
+                  "h-1.5 w-1.5 animate-pulse rounded-full bg-violet-400/60",
+                  collapsed ? "mt-1" : "ml-1",
                 ].join(" ")}
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-violet-400/20 bg-violet-500/15 text-violet-200">
-                  {mode === "personal" ? (
-                    <UserRound size={18} />
-                  ) : (
-                    <Building2 size={18} />
-                  )}
-                </span>
-
-                <span className="min-w-0 flex-1 overflow-hidden">
-                  <span className="block truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                    Workspace
-                  </span>
-                  <span className="mt-0.5 block truncate text-sm font-medium text-slate-100">
-                    {mode === "personal"
-                      ? "Personal"
-                      : selectedOrganization?.name || "Business"}
-                  </span>
-                </span>
-
-                <ChevronDown
-                  size={15}
-                  className={[
-                    "shrink-0 text-slate-500 transition-transform",
-                    workspaceMenuOpen ? "rotate-180" : "",
-                  ].join(" ")}
-                />
-              </button>
-
-              {workspaceMenuOpen && (
-                <div
-                  role="menu"
-                  className="absolute left-0 top-[calc(100%+8px)] z-[200] w-64 rounded-2xl border border-white/10 bg-[#191c24] p-2 shadow-2xl shadow-black/60"
-                >
-                  <p className="px-2 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                    Switch workspace
-                  </p>
-
-                  <button
-                    type="button"
-                    onClick={() => selectWorkspace("personal")}
-                    className={[
-                      "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition",
-                      mode === "personal"
-                        ? "bg-violet-500/15 text-violet-100"
-                        : "text-slate-200 hover:bg-white/[0.06]",
-                    ].join(" ")}
-                  >
-                    <UserRound size={17} className="shrink-0 text-slate-400" />
-                    <span className="flex-1 text-left">Personal</span>
-                    {mode === "personal" && (
-                      <Check size={15} className="shrink-0 text-violet-300" />
-                    )}
-                  </button>
-
-                  {organizations.length > 0 && (
-                    <p className="mt-3 px-2 pb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                      Organizations
-                    </p>
-                  )}
-
-                  {organizations.map((org) => {
-                    const active =
-                      mode === "business" &&
-                      org._id === selectedOrganizationId;
-                    return (
-                      <button
-                        key={org._id}
-                        type="button"
-                        onClick={() => selectOrganization(org._id)}
-                        className={[
-                          "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition",
-                          active
-                            ? "bg-violet-500/15 text-violet-100"
-                            : "text-slate-200 hover:bg-white/[0.06]",
-                        ].join(" ")}
-                      >
-                        <Building2
-                          size={17}
-                          className="shrink-0 text-slate-400"
-                        />
-                        <span className="min-w-0 flex-1 truncate text-left">
-                          {org.name}
-                        </span>
-                        {active && (
-                          <Check
-                            size={15}
-                            className="shrink-0 text-violet-300"
-                          />
-                        )}
-                      </button>
-                    );
-                  })}
-
-                  <div className="mt-2 border-t border-white/[0.08] pt-2">
-                    <Link
-                      href="/dashboard/organizations/new"
-                      onClick={navigateClose}
-                      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-violet-300 transition hover:bg-white/[0.05]"
-                    >
-                      <Plus size={16} className="shrink-0" />
-                      Create organization
-                    </Link>
-                  </div>
-
-                  {organizationsError && (
-                    <p className="mt-2 px-3 text-xs text-rose-300">
-                      {organizationsError}
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {mode === "business" && selectedOrganization && (
-              <p className="mt-2 truncate px-3 text-[10px] text-slate-500">
-                {selectedOrganization.role
-                  ? `Role: ${selectedOrganization.role}`
-                  : selectedOrganization.type || "Organization"}
-              </p>
+              />
             )}
           </div>
-        )}
 
-        {/* ============ Navigation ============ */}
-        <nav className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-2 py-4">
+          {/* Workspace name label (expanded only) */}
           {!collapsed && (
-            <p className="mb-3 truncate px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-              {mode === "personal" ? "Your workspace" : "Business"}
+            <p className="mt-3 truncate px-1 text-sm font-medium text-slate-400">
+              {mode === "personal"
+                ? "Personal"
+                : selectedOrganization?.name || "Business"}
             </p>
           )}
 
+          {!collapsed && organizationsError && (
+            <p className="mt-1 truncate px-1 text-xs text-rose-300">
+              {organizationsError}
+            </p>
+          )}
+        </div>
+
+        {/* ============ Navigation ============ */}
+        <nav className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-2 py-3">
           {links.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.href);
 
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                title={collapsed ? item.label : undefined}
-                aria-label={item.label}
-                aria-current={active ? "page" : undefined}
-                className={[
-                  "group relative flex h-11 items-center gap-3 overflow-hidden rounded-xl text-sm transition-colors",
-                  collapsed ? "justify-center px-0" : "px-3",
-                  active
-                    ? "bg-violet-500/15 font-medium text-violet-200"
-                    : "text-slate-400 hover:bg-white/[0.045] hover:text-slate-100",
-                ].join(" ")}
-              >
-                {active && (
-                  <span className="absolute bottom-2 left-0 top-2 w-[3px] rounded-r-full bg-violet-400" />
-                )}
-                <Icon
-                  size={19}
-                  strokeWidth={active ? 2.2 : 1.8}
+              <div key={item.href} className="group relative">
+                <Link
+                  href={item.href}
+                  aria-label={item.label}
+                  aria-current={active ? "page" : undefined}
                   className={[
-                    "shrink-0",
+                    "flex h-11 items-center gap-3 rounded-xl text-sm transition-colors",
+                    collapsed ? "justify-center px-0" : "px-3",
                     active
-                      ? "text-violet-300"
-                      : "text-slate-400 group-hover:text-white",
+                      ? "bg-violet-500/15 font-medium text-violet-200"
+                      : "text-slate-400 hover:bg-white/[0.045] hover:text-slate-100",
                   ].join(" ")}
-                />
-                <span data-sidebar-label className="truncate">
-                  {item.label}
-                </span>
-              </Link>
+                >
+                  <Icon
+                    size={19}
+                    strokeWidth={active ? 2.2 : 1.8}
+                    className={[
+                      "shrink-0",
+                      active
+                        ? "text-violet-300"
+                        : "text-slate-400 group-hover:text-white",
+                    ].join(" ")}
+                  />
+                  <span data-sidebar-label className="truncate">
+                    {item.label}
+                  </span>
+                </Link>
+
+                {collapsed && (
+                  <span className="pointer-events-none absolute left-full top-1/2 z-[200] ml-2 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-slate-900 shadow-lg group-hover:block">
+                    {item.label}
+                  </span>
+                )}
+              </div>
             );
           })}
         </nav>
 
         {/* ============ Footer ============ */}
         <div className="shrink-0 space-y-1 border-t border-white/[0.07] p-2">
-          <Link
-            href="/dashboard/settings"
-            title={collapsed ? "Settings" : undefined}
-            aria-label="Settings"
-            className={[
-              "flex h-11 items-center gap-3 overflow-hidden rounded-xl text-sm transition",
-              collapsed ? "justify-center px-0" : "px-3",
-              isActive("/dashboard/settings")
-                ? "bg-violet-500/15 text-violet-200"
-                : "text-slate-400 hover:bg-white/[0.045] hover:text-white",
-            ].join(" ")}
-          >
-            <Settings size={19} className="shrink-0" />
-            <span data-sidebar-label className="truncate">
-              Settings
-            </span>
-          </Link>
+          <div className="group relative">
+            <Link
+              href="/dashboard/settings"
+              aria-label="Settings"
+              className={[
+                "flex h-11 items-center gap-3 rounded-xl text-sm transition",
+                collapsed ? "justify-center px-0" : "px-3",
+                isActive("/dashboard/settings")
+                  ? "bg-violet-500/15 text-violet-200"
+                  : "text-slate-400 hover:bg-white/[0.045] hover:text-white",
+              ].join(" ")}
+            >
+              <Settings size={19} className="shrink-0" />
+              <span data-sidebar-label className="truncate">
+                Settings
+              </span>
+            </Link>
 
-          <Link
-            href="/help"
-            title={collapsed ? "Help & support" : undefined}
-            aria-label="Help & support"
-            className={[
-              "flex h-11 items-center gap-3 overflow-hidden rounded-xl text-sm text-slate-400 transition hover:bg-white/[0.045] hover:text-white",
-              collapsed ? "justify-center px-0" : "px-3",
-            ].join(" ")}
-          >
-            <CircleHelp size={19} className="shrink-0" />
-            <span data-sidebar-label className="truncate">
-              Help & support
-            </span>
-          </Link>
-
-          <button
-            type="button"
-            onClick={onToggle}
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className={[
-              "flex h-10 w-full items-center gap-2 overflow-hidden rounded-xl border border-white/[0.07] text-xs font-medium text-slate-400 transition hover:bg-white/[0.04] hover:text-white",
-              collapsed ? "justify-center px-0" : "px-3",
-            ].join(" ")}
-          >
-            {collapsed ? (
-              <ChevronRight size={17} className="shrink-0" />
-            ) : (
-              <>
-                <ChevronLeft size={16} className="shrink-0" />
-                <span data-sidebar-label className="truncate">
-                  Collapse
-                </span>
-              </>
+            {collapsed && (
+              <span className="pointer-events-none absolute left-full top-1/2 z-[200] ml-2 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-slate-900 shadow-lg group-hover:block">
+                Settings
+              </span>
             )}
-          </button>
+          </div>
+
+          <div className="group relative">
+            <Link
+              href="/help"
+              aria-label="Help & support"
+              className={[
+                "flex h-11 items-center gap-3 rounded-xl text-sm text-slate-400 transition hover:bg-white/[0.045] hover:text-white",
+                collapsed ? "justify-center px-0" : "px-3",
+              ].join(" ")}
+            >
+              <CircleHelp size={19} className="shrink-0" />
+              <span data-sidebar-label className="truncate">
+                Help & support
+              </span>
+            </Link>
+
+            {collapsed && (
+              <span className="pointer-events-none absolute left-full top-1/2 z-[200] ml-2 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-slate-900 shadow-lg group-hover:block">
+                Help & support
+              </span>
+            )}
+          </div>
+
+          <div className="group relative">
+            <button
+              type="button"
+              onClick={onToggle}
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              className={[
+                "flex h-10 w-full items-center gap-2 rounded-xl border border-white/[0.07] text-xs font-medium text-slate-400 transition hover:bg-white/[0.04] hover:text-white",
+                collapsed ? "justify-center px-0" : "px-3",
+              ].join(" ")}
+            >
+              {collapsed ? (
+                <LayoutDashboard size={17} className="shrink-0" />
+              ) : (
+                <span data-sidebar-label className="truncate">
+                  Collapse sidebar
+                </span>
+              )}
+            </button>
+
+            {collapsed && (
+              <span className="pointer-events-none absolute left-full top-1/2 z-[200] ml-2 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-slate-900 shadow-lg group-hover:block">
+                Expand sidebar
+              </span>
+            )}
+          </div>
         </div>
       </aside>
 
@@ -539,16 +420,7 @@ export default function DashboardSidebar({
         ].join(" ")}
       >
         <div className="flex shrink-0 items-center justify-between border-b border-white/[0.08] p-4">
-          <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-              Workspace
-            </p>
-            <p className="mt-1 truncate text-sm font-semibold text-white">
-              {mode === "personal"
-                ? "Personal"
-                : selectedOrganization?.name || "Business"}
-            </p>
-          </div>
+          <p className="text-sm font-semibold text-white">Workspaces</p>
           <button
             type="button"
             onClick={onCloseMobile}
@@ -559,12 +431,12 @@ export default function DashboardSidebar({
           </button>
         </div>
 
-        {/* Mobile workspace rail (horizontal) */}
+        {/* Horizontal rail */}
         <div className="flex shrink-0 gap-2 overflow-x-auto border-b border-white/[0.08] p-3">
           <button
             type="button"
             onClick={() => selectWorkspace("personal")}
-            title="Personal workspace"
+            aria-label="Personal workspace"
             className={[
               railBase,
               mode === "personal" ? railActive : railInactive,
@@ -582,7 +454,7 @@ export default function DashboardSidebar({
                 key={org._id}
                 type="button"
                 onClick={() => selectOrganization(org._id)}
-                title={org.name}
+                aria-label={org.name}
                 className={[
                   railBase,
                   active ? railActive : railInactive,
@@ -595,8 +467,8 @@ export default function DashboardSidebar({
 
           <Link
             href="/dashboard/organizations/new"
-            title="Create organization"
-            onClick={navigateClose}
+            aria-label="Start a business"
+            onClick={onCloseMobile}
             className={[
               railBase,
               "border-dashed border-white/[0.12] bg-transparent text-slate-500",
@@ -607,8 +479,14 @@ export default function DashboardSidebar({
           </Link>
         </div>
 
+        <p className="shrink-0 truncate px-4 py-3 text-sm font-medium text-slate-400">
+          {mode === "personal"
+            ? "Personal"
+            : selectedOrganization?.name || "Business"}
+        </p>
+
         {organizationsError && (
-          <p className="shrink-0 px-3 pt-2 text-xs text-rose-300">
+          <p className="shrink-0 px-3 text-xs text-rose-300">
             {organizationsError}
           </p>
         )}
@@ -622,7 +500,7 @@ export default function DashboardSidebar({
               <Link
                 key={item.href}
                 href={item.href}
-                onClick={navigateClose}
+                onClick={onCloseMobile}
                 className={[
                   "flex h-12 items-center gap-3 rounded-xl px-3 text-sm",
                   active
@@ -640,14 +518,14 @@ export default function DashboardSidebar({
         <div className="shrink-0 border-t border-white/[0.08] p-3">
           <Link
             href="/dashboard/settings"
-            onClick={navigateClose}
+            onClick={onCloseMobile}
             className="flex h-11 items-center gap-3 rounded-xl px-3 text-sm text-slate-400 hover:bg-white/[0.045] hover:text-white"
           >
             <Settings size={19} /> Settings
           </Link>
           <Link
             href="/help"
-            onClick={navigateClose}
+            onClick={onCloseMobile}
             className="flex h-11 items-center gap-3 rounded-xl px-3 text-sm text-slate-400 hover:bg-white/[0.045] hover:text-white"
           >
             <CircleHelp size={19} /> Help & support
@@ -668,7 +546,7 @@ export default function DashboardSidebar({
             <Link
               key={item.href}
               href={item.href}
-              onClick={navigateClose}
+              onClick={onCloseMobile}
               aria-label={item.label}
               aria-current={active ? "page" : undefined}
               className={[
