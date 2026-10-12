@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import CampaignEditForm from "@/components/campaigns/CampaignEditForm";
 
 type Campaign = {
   _id: string;
@@ -17,6 +18,12 @@ type Campaign = {
   rewardPerCreator: number;
   maxCreators: number;
   applicationDeadline?: string;
+  startsAt?: string;
+  endsAt?: string;
+  targetNiches?: string[];
+  targetCountries?: string[];
+  requirements?: string[];
+  isPublic: boolean;
   organization?: { name?: string } | null;
 };
 
@@ -50,6 +57,7 @@ export default function CampaignDetailsPage() {
   const [error, setError] = useState("");
   const [reviewingId, setReviewingId] = useState("");
   const [notice, setNotice] = useState("");
+  const [editing, setEditing] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -216,6 +224,23 @@ export default function CampaignDetailsPage() {
           <div className="py-20 text-center text-gray-400">Campaign unavailable.</div>
         ) : (
           <>
+            {editing && !["completed", "cancelled"].includes(campaign.status) && (
+              <CampaignEditForm
+                campaign={campaign}
+                onSaved={(updatedCampaign) => {
+                  setCampaign((current) =>
+                    current
+                      ? { ...current, ...updatedCampaign }
+                      : current,
+                  );
+                  setEditing(false);
+                  setNotice("Campaign updated successfully.");
+                  setError("");
+                }}
+                onCancel={() => setEditing(false)}
+              />
+            )}
+
             <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.035] p-5 sm:p-8">
               <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
                 <div className="min-w-0">
@@ -263,6 +288,16 @@ export default function CampaignDetailsPage() {
               </div>
 
               <div className="mt-6 flex flex-wrap gap-3">
+                {!["completed", "cancelled"].includes(campaign.status) && (
+                  <button
+                    type="button"
+                    onClick={() => setEditing((current) => !current)}
+                    className="rounded-xl border border-violet-400/30 px-4 py-2.5 text-sm text-violet-200 hover:bg-violet-400/10"
+                  >
+                    {editing ? "Hide editor" : "Edit campaign"}
+                  </button>
+                )}
+
                 {campaign.status === "active" && (
                   <button
                     onClick={() => void changeCampaignStatus("paused")}

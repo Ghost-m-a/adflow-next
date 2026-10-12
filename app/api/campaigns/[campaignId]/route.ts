@@ -172,13 +172,24 @@ export async function PATCH(request: NextRequest, context: Context) {
       );
     }
 
+    const deadlineWasProvided = Object.prototype.hasOwnProperty.call(
+      update,
+      "applicationDeadline",
+    );
+
     if (
-      update.status === "active" &&
       nextDeadline &&
-      nextDeadline <= new Date()
+      nextDeadline <= new Date() &&
+      (
+        update.status === "active" ||
+        (campaign.status === "active" && deadlineWasProvided)
+      )
     ) {
       return NextResponse.json(
-        { error: "Cannot activate a campaign with an expired application deadline." },
+        {
+          error:
+            "An active campaign must have a future application deadline. Update the deadline before activating it.",
+        },
         { status: 400 },
       );
     }
@@ -200,19 +211,6 @@ export async function PATCH(request: NextRequest, context: Context) {
           { status: 409 },
         );
       }
-    }
-
-    if (
-      update.status === "active" &&
-      campaign.status !== "active" &&
-      !update.applicationDeadline &&
-      campaign.applicationDeadline &&
-      campaign.applicationDeadline <= new Date()
-    ) {
-      return NextResponse.json(
-        { error: "Cannot activate a campaign with an expired application deadline." },
-        { status: 400 },
-      );
     }
 
     Object.assign(campaign, update);
