@@ -3,13 +3,13 @@
 import {
   Activity,
   Building2,
+  Check,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   CircleHelp,
   Compass,
   LayoutDashboard,
   Megaphone,
+  Plus,
   Settings,
   UserRound,
   Users,
@@ -71,6 +71,7 @@ export default function DashboardSidebar({
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [organizationsLoading, setOrganizationsLoading] = useState(true);
   const [organizationsError, setOrganizationsError] = useState("");
+  const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,32 +82,28 @@ export default function DashboardSidebar({
           credentials: "same-origin",
           cache: "no-store",
         });
-
         const data = await response.json();
 
         if (!response.ok) {
           throw new Error(data.error || "Unable to load organizations.");
         }
 
-        const result = Array.isArray(data)
+        const result: Organization[] = Array.isArray(data)
           ? data
           : Array.isArray(data.organizations)
             ? data.organizations
             : [];
 
-        if (!cancelled) {
-          setOrganizations(result);
-          setOrganizationsError("");
+        if (cancelled) return;
 
-          if (
-            result.length > 0 &&
-            !result.some(
-              (organization: Organization) =>
-                organization._id === selectedOrganizationId,
-            )
-          ) {
-            onOrganizationChange(result[0]._id);
-          }
+        setOrganizations(result);
+        setOrganizationsError("");
+
+        if (
+          result.length > 0 &&
+          !result.some((org) => org._id === selectedOrganizationId)
+        ) {
+          onOrganizationChange(result[0]._id);
         }
       } catch (error) {
         if (!cancelled) {
@@ -122,174 +119,180 @@ export default function DashboardSidebar({
     }
 
     void loadOrganizations();
-
     return () => {
       cancelled = true;
     };
   }, [onOrganizationChange, selectedOrganizationId]);
 
+  useEffect(() => {
+    if (!mobileOpen) setWorkspaceMenuOpen(false);
+  }, [mobileOpen]);
+
   const links = mode === "personal" ? personalLinks : businessLinks;
+  const selectedOrganization = organizations.find(
+    (org) => org._id === selectedOrganizationId,
+  );
 
   function isActive(href: string) {
     if (href === "/dashboard") return pathname === href;
-
     return pathname === href || pathname.startsWith(`${href}/`);
   }
 
-  const selectedOrganization = organizations.find(
-    (organization) => organization._id === selectedOrganizationId,
-  );
+  function navigateClose() {
+    onCloseMobile();
+    setWorkspaceMenuOpen(false);
+  }
+
+  function selectWorkspace(nextMode: WorkspaceMode) {
+    onModeChange(nextMode);
+    setWorkspaceMenuOpen(false);
+  }
 
   return (
     <>
       {mobileOpen && (
         <button
           type="button"
-          aria-label="Close navigation"
+          aria-label="Close navigation menu"
           onClick={onCloseMobile}
           className="fixed inset-0 top-[76px] z-[80] bg-black/60 backdrop-blur-sm lg:hidden"
         />
       )}
 
+      {/* Desktop icon rail / expanded sidebar */}
       <aside
         className={[
-          "fixed z-[90] flex flex-col border-white/[0.08] bg-[#0b0e17]",
-          "transition-[width,transform,bottom] duration-200 ease-out",
-          "left-0 top-[76px] bottom-0 border-r",
-          collapsed ? "w-[76px]" : "w-[264px]",
-          mobileOpen ? "translate-x-0" : "-translate-x-full",
-          "lg:translate-x-0",
-          "max-lg:inset-x-0 max-lg:top-auto max-lg:bottom-0",
-          "max-lg:h-[76px] max-lg:w-full max-lg:flex-row max-lg:border-r-0",
-          "max-lg:border-t max-lg:pb-[env(safe-area-inset-bottom)]",
-          "max-lg:overflow-visible",
+          "fixed bottom-0 left-0 top-[76px] z-[90] hidden flex-col border-r border-white/[0.08]",
+          "bg-[#111318] transition-[width] duration-200 lg:flex",
+          collapsed ? "w-16" : "w-[264px]",
         ].join(" ")}
       >
-        {/* Workspace selector */}
-        <div className="border-b border-white/[0.07] p-3 max-lg:hidden">
-          <div className="mb-2 flex items-center justify-between px-2">
-            {!collapsed && (
-              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                Workspace
+        {/* Workspace controls */}
+        <div className="border-b border-white/[0.07] p-3">
+          <div className="relative">
+            <button
+              type="button"
+              title={mode === "personal" ? "Personal workspace" : "Business workspace"}
+              aria-expanded={workspaceMenuOpen}
+              onClick={() => setWorkspaceMenuOpen((value) => !value)}
+              className={[
+                "flex w-full items-center gap-3 rounded-xl border border-transparent p-2 text-left transition",
+                "hover:border-white/[0.08] hover:bg-white/[0.04]",
+                collapsed ? "justify-center" : "",
+              ].join(" ")}
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-violet-400/20 bg-violet-500/15 text-violet-200">
+                {mode === "personal" ? <UserRound size={18} /> : <Building2 size={18} />}
               </span>
-            )}
 
-            <button
-              type="button"
-              onClick={onCloseMobile}
-              aria-label="Close sidebar"
-              className="rounded-lg p-1.5 text-slate-400 hover:bg-white/[0.06] hover:text-white lg:hidden"
-            >
-              <X size={17} />
-            </button>
-          </div>
-
-          <div className={`grid ${collapsed ? "grid-cols-1" : "grid-cols-2"} gap-1 rounded-xl border border-white/[0.07] bg-[#070a12] p-1`}>
-            <button
-              type="button"
-              title="Personal workspace"
-              onClick={() => onModeChange("personal")}
-              className={[
-                "flex min-w-0 items-center justify-center gap-2 rounded-lg px-2 py-2.5 text-xs font-medium transition",
-                mode === "personal"
-                  ? "bg-violet-500/15 text-violet-200 ring-1 ring-violet-400/20"
-                  : "text-slate-400 hover:text-white",
-              ].join(" ")}
-            >
-              <UserRound size={16} />
-              {!collapsed && <span>Personal</span>}
+              {!collapsed && (
+                <>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                      Workspace
+                    </span>
+                    <span className="mt-0.5 block truncate text-sm font-medium text-slate-100">
+                      {mode === "personal"
+                        ? "Personal"
+                        : selectedOrganization?.name || "Business"}
+                    </span>
+                  </span>
+                  <ChevronDown size={15} className="shrink-0 text-slate-500" />
+                </>
+              )}
             </button>
 
-            <button
-              type="button"
-              title="Business workspace"
-              onClick={() => onModeChange("business")}
-              className={[
-                "flex min-w-0 items-center justify-center gap-2 rounded-lg px-2 py-2.5 text-xs font-medium transition",
-                mode === "business"
-                  ? "bg-violet-500/15 text-violet-200 ring-1 ring-violet-400/20"
-                  : "text-slate-400 hover:text-white",
-              ].join(" ")}
-            >
-              <Building2 size={16} />
-              <span>Business</span>
-            </button>
-          </div>
-
-          {mode === "business" && !collapsed && (
-            <div className="mt-3">
-              <label
-                htmlFor="sidebar-organization"
-                className="mb-1.5 block text-xs text-slate-400"
+            {workspaceMenuOpen && (
+              <div
+                className={[
+                  "absolute left-0 top-full z-[130] mt-2 w-56 rounded-xl border border-white/10",
+                  "bg-[#191c24] p-2 shadow-2xl shadow-black/40",
+                  collapsed ? "left-12 top-0 mt-0" : "",
+                ].join(" ")}
               >
-                Active organization
-              </label>
+                <p className="px-2 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                  Switch workspace
+                </p>
 
-              <div className="relative">
-                <select
-                  id="sidebar-organization"
-                  value={selectedOrganizationId}
-                  onChange={(event) =>
-                    onOrganizationChange(event.target.value)
-                  }
-                  disabled={organizationsLoading || organizations.length === 0}
-                  className="w-full appearance-none rounded-xl border border-white/[0.08] bg-[#111522] py-2.5 pl-3 pr-8 text-xs text-slate-200 outline-none transition focus:border-violet-400/50 disabled:opacity-50"
+                <button
+                  type="button"
+                  onClick={() => selectWorkspace("personal")}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-200 hover:bg-white/[0.06]"
                 >
-                  {organizationsLoading && (
-                    <option value="">Loading organizations...</option>
-                  )}
+                  <UserRound size={17} className="text-slate-400" />
+                  <span className="flex-1 text-left">Personal</span>
+                  {mode === "personal" && <Check size={15} className="text-violet-300" />}
+                </button>
 
-                  {!organizationsLoading && organizations.length === 0 && (
-                    <option value="">No organizations yet</option>
-                  )}
+                <button
+                  type="button"
+                  onClick={() => selectWorkspace("business")}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-200 hover:bg-white/[0.06]"
+                >
+                  <Building2 size={17} className="text-slate-400" />
+                  <span className="flex-1 text-left">Business</span>
+                  {mode === "business" && <Check size={15} className="text-violet-300" />}
+                </button>
 
-                  {organizations.map((organization) => (
-                    <option key={organization._id} value={organization._id}>
-                      {organization.name}
-                    </option>
-                  ))}
-                </select>
+                {mode === "business" && (
+                  <div className="mt-2 border-t border-white/[0.08] pt-2">
+                    <label
+                      htmlFor="sidebar-organization"
+                      className="mb-1 block px-2 text-xs text-slate-500"
+                    >
+                      Organization
+                    </label>
+                    <select
+                      id="sidebar-organization"
+                      value={selectedOrganizationId}
+                      disabled={organizationsLoading || organizations.length === 0}
+                      onChange={(event) => onOrganizationChange(event.target.value)}
+                      className="w-full rounded-lg border border-white/10 bg-[#101219] px-2 py-2 text-xs text-slate-200 outline-none focus:border-violet-400/50 disabled:opacity-50"
+                    >
+                      {organizationsLoading && <option value="">Loading…</option>}
+                      {!organizationsLoading && organizations.length === 0 && (
+                        <option value="">No organizations yet</option>
+                      )}
+                      {organizations.map((org) => (
+                        <option key={org._id} value={org._id}>
+                          {org.name}
+                        </option>
+                      ))}
+                    </select>
 
-                <ChevronDown
-                  size={14}
-                  className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500"
-                />
-              </div>
+                    {organizationsError && (
+                      <p className="mt-2 text-xs text-rose-300">{organizationsError}</p>
+                    )}
 
-              {organizationsError && (
-                <p className="mt-2 text-xs text-rose-300">
-                  {organizationsError}
-                </p>
-              )}
-
-              {!organizationsLoading &&
-                organizations.length === 0 &&
-                !organizationsError && (
-                  <Link
-                    href="/dashboard/organizations/new"
-                    onClick={onCloseMobile}
-                    className="mt-2 block text-xs text-violet-300 hover:text-violet-200"
-                  >
-                    + Create organization
-                  </Link>
+                    {!organizationsLoading && organizations.length === 0 && (
+                      <Link
+                        href="/dashboard/organizations/new"
+                        onClick={navigateClose}
+                        className="mt-2 flex items-center gap-2 rounded-lg px-2 py-2 text-xs text-violet-300 hover:bg-white/[0.05]"
+                      >
+                        <Plus size={14} />
+                        Create organization
+                      </Link>
+                    )}
+                  </div>
                 )}
+              </div>
+            )}
+          </div>
 
-              {selectedOrganization && (
-                <p className="mt-2 truncate px-1 text-[10px] text-slate-500">
-                  {selectedOrganization.role
-                    ? `Role: ${selectedOrganization.role}`
-                    : selectedOrganization.type || "Organization"}
-                </p>
-              )}
-            </div>
+          {!collapsed && mode === "business" && selectedOrganization && (
+            <p className="mt-2 truncate px-3 text-[10px] text-slate-500">
+              {selectedOrganization.role
+                ? `Role: ${selectedOrganization.role}`
+                : selectedOrganization.type || "Organization"}
+            </p>
           )}
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-5 max-lg:flex max-lg:items-center max-lg:justify-around max-lg:overflow-visible max-lg:px-1 max-lg:py-1">
+        <nav className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-2 py-4">
           {!collapsed && (
-            <p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 max-lg:hidden">
-              {mode === "personal" ? "Your workspace" : "Manage business"}
+            <p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+              {mode === "personal" ? "Your workspace" : "Business"}
             </p>
           )}
 
@@ -301,67 +304,58 @@ export default function DashboardSidebar({
               <Link
                 key={item.href}
                 href={item.href}
-                onClick={onCloseMobile}
                 title={collapsed ? item.label : undefined}
+                aria-label={item.label}
                 aria-current={active ? "page" : undefined}
                 className={[
-                  "group relative flex items-center gap-3 rounded-xl px-3 py-3 text-sm transition-colors",
-                  collapsed ? "justify-center" : "",
-                  "max-lg:flex-1 max-lg:flex-col max-lg:justify-center max-lg:gap-1 max-lg:px-1 max-lg:py-2 max-lg:text-[10px]",
+                  "group relative flex h-11 items-center gap-3 rounded-xl px-3 text-sm transition-colors",
+                  collapsed ? "justify-center px-0" : "",
                   active
-                    ? "bg-violet-500/12 font-medium text-violet-200"
+                    ? "bg-violet-500/15 font-medium text-violet-200"
                     : "text-slate-400 hover:bg-white/[0.045] hover:text-slate-100",
                 ].join(" ")}
               >
                 {active && (
                   <span className="absolute bottom-2 left-0 top-2 w-[3px] rounded-r-full bg-violet-400" />
                 )}
-
                 <Icon
                   size={19}
                   strokeWidth={active ? 2.2 : 1.8}
-                  className={
-                    active
-                      ? "shrink-0 text-violet-300"
-                      : "shrink-0 text-slate-500 group-hover:text-slate-200"
-                  }
+                  className={[
+                    "shrink-0",
+                    active ? "text-violet-300" : "text-slate-400 group-hover:text-white",
+                  ].join(" ")}
                 />
-
-                <span className={collapsed ? "hidden" : "truncate max-lg:block max-lg:max-w-full max-lg:text-center"}>
-                  {item.label}
-                </span>
+                {!collapsed && <span className="truncate">{item.label}</span>}
               </Link>
             );
           })}
         </nav>
 
-        {/* Bottom links and collapse */}
-        <div className="border-t border-white/[0.07] p-3 max-lg:flex max-lg:items-center max-lg:gap-1 max-lg:border-l max-lg:border-t-0 max-lg:px-2 max-lg:py-1">
+        <div className="space-y-1 border-t border-white/[0.07] p-2">
           <Link
             href="/dashboard/settings"
-            onClick={onCloseMobile}
             title={collapsed ? "Settings" : undefined}
+            aria-label="Settings"
             className={[
-              "flex items-center gap-3 rounded-xl px-3 py-3 text-sm transition",
+              "flex h-11 items-center gap-3 rounded-xl px-3 text-sm transition",
+              collapsed ? "justify-center px-0" : "",
               isActive("/dashboard/settings")
-                ? "bg-violet-500/12 text-violet-200"
+                ? "bg-violet-500/15 text-violet-200"
                 : "text-slate-400 hover:bg-white/[0.045] hover:text-white",
-              collapsed ? "justify-center" : "",
-              "max-lg:mt-0 max-lg:flex-1 max-lg:flex-col max-lg:gap-1 max-lg:px-1 max-lg:py-2 max-lg:text-[10px]",
             ].join(" ")}
           >
             <Settings size={19} />
-            <span className={collapsed ? "hidden" : "max-lg:block max-lg:text-center"}>Settings</span>
+            {!collapsed && <span>Settings</span>}
           </Link>
 
           <Link
             href="/help"
-            onClick={onCloseMobile}
-            title={collapsed ? "Help" : undefined}
+            title={collapsed ? "Help and support" : undefined}
+            aria-label="Help and support"
             className={[
-              "mt-1 flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-slate-400 transition hover:bg-white/[0.045] hover:text-white",
-              collapsed ? "justify-center" : "",
-              "max-lg:hidden",
+              "flex h-11 items-center gap-3 rounded-xl px-3 text-sm text-slate-400 transition hover:bg-white/[0.045] hover:text-white",
+              collapsed ? "justify-center px-0" : "",
             ].join(" ")}
           >
             <CircleHelp size={19} />
@@ -373,19 +367,190 @@ export default function DashboardSidebar({
             onClick={onToggle}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className="mt-3 hidden w-full items-center justify-center gap-2 rounded-xl border border-white/[0.07] py-2.5 text-xs text-slate-400 transition hover:bg-white/[0.04] hover:text-white lg:flex"
+            className="mt-2 flex h-10 w-full items-center justify-center rounded-xl border border-white/[0.07] text-xs text-slate-400 transition hover:bg-white/[0.04] hover:text-white"
           >
-            {collapsed ? (
-              <ChevronRight size={17} />
-            ) : (
-              <>
-                <ChevronLeft size={17} />
-                <span>Collapse sidebar</span>
-              </>
-            )}
+            {collapsed ? <ChevronDown size={17} className="rotate-[-90deg]" /> : "Collapse sidebar"}
           </button>
         </div>
       </aside>
+
+      {/* Mobile slide-out menu */}
+      <aside
+        className={[
+          "fixed bottom-0 left-0 top-[76px] z-[95] flex w-[min(300px,85vw)] flex-col",
+          "border-r border-white/[0.08] bg-[#111318] shadow-2xl shadow-black/40",
+          "transition-transform duration-200 lg:hidden",
+          mobileOpen ? "translate-x-0" : "-translate-x-full",
+        ].join(" ")}
+      >
+        <div className="flex items-center justify-between border-b border-white/[0.08] p-4">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+              Workspace
+            </p>
+            <p className="mt-1 text-sm font-semibold text-white">
+              {mode === "personal" ? "Personal" : selectedOrganization?.name || "Business"}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onCloseMobile}
+            aria-label="Close menu"
+            className="rounded-lg p-2 text-slate-400 hover:bg-white/[0.06] hover:text-white"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 border-b border-white/[0.08] p-3">
+          <button
+            type="button"
+            onClick={() => selectWorkspace("personal")}
+            className={[
+              "flex items-center justify-center gap-2 rounded-xl border px-3 py-3 text-xs font-medium",
+              mode === "personal"
+                ? "border-violet-400/30 bg-violet-500/15 text-violet-200"
+                : "border-white/[0.08] text-slate-400",
+            ].join(" ")}
+          >
+            <UserRound size={16} /> Personal
+          </button>
+          <button
+            type="button"
+            onClick={() => selectWorkspace("business")}
+            className={[
+              "flex items-center justify-center gap-2 rounded-xl border px-3 py-3 text-xs font-medium",
+              mode === "business"
+                ? "border-violet-400/30 bg-violet-500/15 text-violet-200"
+                : "border-white/[0.08] text-slate-400",
+            ].join(" ")}
+          >
+            <Building2 size={16} /> Business
+          </button>
+        </div>
+
+        {mode === "business" && (
+          <div className="border-b border-white/[0.08] p-3">
+            <label htmlFor="mobile-sidebar-organization" className="mb-2 block text-xs text-slate-400">
+              Active organization
+            </label>
+            <select
+              id="mobile-sidebar-organization"
+              value={selectedOrganizationId}
+              disabled={organizationsLoading || organizations.length === 0}
+              onChange={(event) => onOrganizationChange(event.target.value)}
+              className="w-full rounded-xl border border-white/10 bg-[#0b0e17] px-3 py-3 text-sm text-slate-200 outline-none focus:border-violet-400/50 disabled:opacity-50"
+            >
+              {organizationsLoading && <option value="">Loading organizations…</option>}
+              {!organizationsLoading && organizations.length === 0 && (
+                <option value="">No organizations yet</option>
+              )}
+              {organizations.map((org) => (
+                <option key={org._id} value={org._id}>{org.name}</option>
+              ))}
+            </select>
+            {organizationsError && <p className="mt-2 text-xs text-rose-300">{organizationsError}</p>}
+            {!organizationsLoading && organizations.length === 0 && (
+              <Link href="/dashboard/organizations/new" onClick={navigateClose} className="mt-3 flex items-center gap-2 text-sm text-violet-300">
+                <Plus size={16} /> Create organization
+              </Link>
+            )}
+          </div>
+        )}
+
+        <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+          {links.map((item) => {
+            const Icon = item.icon;
+            const active = isActive(item.href);
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={navigateClose}
+                className={[
+                  "flex h-12 items-center gap-3 rounded-xl px-3 text-sm",
+                  active
+                    ? "bg-violet-500/15 font-medium text-violet-200"
+                    : "text-slate-400 hover:bg-white/[0.045] hover:text-white",
+                ].join(" ")}
+              >
+                <Icon size={19} />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="border-t border-white/[0.08] p-3">
+          <Link
+            href="/dashboard/settings"
+            onClick={navigateClose}
+            className="flex h-11 items-center gap-3 rounded-xl px-3 text-sm text-slate-400 hover:bg-white/[0.045] hover:text-white"
+          >
+            <Settings size={19} /> Settings
+          </Link>
+          <Link
+            href="/help"
+            onClick={navigateClose}
+            className="flex h-11 items-center gap-3 rounded-xl px-3 text-sm text-slate-400 hover:bg-white/[0.045] hover:text-white"
+          >
+            <CircleHelp size={19} /> Help & support
+          </Link>
+        </div>
+      </aside>
+
+      {/* Mobile bottom navigation */}
+      <nav
+        aria-label="Mobile navigation"
+        className="fixed inset-x-0 bottom-0 z-[70] flex h-[68px] items-stretch justify-around border-t border-white/[0.09] bg-[#111318]/[0.98] px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
+      >
+        {links.slice(0, 4).map((item) => {
+          const Icon = item.icon;
+          const active = isActive(item.href);
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={navigateClose}
+              aria-label={item.label}
+              aria-current={active ? "page" : undefined}
+              className={[
+                "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1",
+                active ? "text-violet-200" : "text-slate-500",
+              ].join(" ")}
+            >
+              {active && (
+                <span className="absolute left-1/2 top-0 h-[3px] w-8 -translate-x-1/2 rounded-b-full bg-violet-400" />
+              )}
+              <span className={active ? "flex h-9 w-10 items-center justify-center rounded-xl bg-violet-500/15" : "flex h-9 w-10 items-center justify-center"}>
+                <Icon size={20} strokeWidth={active ? 2.2 : 1.8} />
+              </span>
+              <span className="max-w-full truncate px-1 text-[10px]">{item.label}</span>
+            </Link>
+          );
+        })}
+
+        <button
+          type="button"
+          aria-label="Open menu"
+          aria-expanded={mobileOpen}
+          onClick={() => {
+            // The parent shell owns the mobile menu state.
+            const button = document.querySelector<HTMLButtonElement>(
+              'button[aria-label="Open navigation"]',
+            );
+            button?.click();
+          }}
+          className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 text-slate-500"
+        >
+          <span className="flex h-9 w-10 items-center justify-center">
+            <Building2 size={20} />
+          </span>
+          <span className="text-[10px]">Menu</span>
+        </button>
+      </nav>
     </>
   );
 }
