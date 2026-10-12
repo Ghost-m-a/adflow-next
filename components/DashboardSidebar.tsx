@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Organization = {
   _id: string;
@@ -71,6 +71,8 @@ export default function DashboardSidebar({
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [organizationsLoading, setOrganizationsLoading] = useState(true);
   const [organizationsError, setOrganizationsError] = useState("");
+  const [hovered, setHovered] = useState(false);
+  const hoverTimeout = useRef<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -123,10 +125,24 @@ export default function DashboardSidebar({
     };
   }, [onOrganizationChange, selectedOrganizationId]);
 
+  // Cancel any pending hover timeout on unmount.
+  useEffect(() => {
+    return () => {
+      if (hoverTimeout.current) window.clearTimeout(hoverTimeout.current);
+    };
+  }, []);
+
   const links = mode === "personal" ? personalLinks : businessLinks;
   const selectedOrganization = organizations.find(
     (org) => org._id === selectedOrganizationId,
   );
+
+  // The persistent width — matches DashboardShell's main-content margin.
+  const isPersistentlyCollapsed = collapsed;
+
+  // The *rendered* width — expands on hover only when persistently collapsed.
+  const isHoverExpanded = isPersistentlyCollapsed && hovered;
+  const isVisuallyExpanded = !isPersistentlyCollapsed || isHoverExpanded;
 
   function isActive(href: string) {
     if (href === "/dashboard") return pathname === href;
@@ -142,11 +158,31 @@ export default function DashboardSidebar({
     onOrganizationChange(orgId);
   }
 
+  function handleMouseEnter() {
+    if (!isPersistentlyCollapsed) return;
+    if (hoverTimeout.current) {
+      window.clearTimeout(hoverTimeout.current);
+      hoverTimeout.current = null;
+    }
+    setHovered(true);
+  }
+
+  function handleMouseLeave() {
+    if (hoverTimeout.current) window.clearTimeout(hoverTimeout.current);
+    // Small delay prevents flicker when the cursor briefly leaves.
+    hoverTimeout.current = window.setTimeout(() => {
+      setHovered(false);
+      hoverTimeout.current = null;
+    }, 80);
+  }
+
   // ---- Rail square styling ----
   const railBase =
     "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-sm font-semibold transition";
+
   const railInactive =
     "border-white/[0.08] bg-white/[0.03] text-slate-400 hover:border-white/20 hover:bg-white/[0.06] hover:text-white";
+
   const railActive =
     "border-violet-400/60 bg-violet-500/20 text-violet-100 ring-2 ring-violet-400/30";
 
@@ -164,49 +200,48 @@ export default function DashboardSidebar({
       {/* ===================== Desktop sidebar ===================== */}
       <aside
         data-sidebar
-        data-collapsed={collapsed ? "true" : "false"}
+        data-collapsed={isPersistentlyCollapsed ? "true" : "false"}
+        data-hover-expanded={isHoverExpanded ? "true" : "false"}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        style={{ width: isVisuallyExpanded ? 264 : 76 }}
         className={[
-          "fixed bottom-0 left-0 top-[76px] z-[90] hidden flex-col border-r border-white/[0.08]",
-          "bg-[#111318] transition-[width] duration-200 ease-out lg:flex",
-          collapsed ? "w-[76px]" : "w-[264px]",
+          "fixed bottom-0 left-0 top-[76px] z-[95] hidden flex-col border-r border-white/[0.08]",
+          "bg-[#111318] transition-[width,box-shadow] duration-200 ease-out lg:flex",
+          // Elevated shadow only while hover-expanded, so it reads as an overlay.
+          isHoverExpanded
+            ? "shadow-2xl shadow-black/60 ring-1 ring-white/[0.06]"
+            : "",
         ].join(" ")}
       >
         {/* ============ Workspace rail ============ */}
         <div
           className={[
             "shrink-0 border-b border-white/[0.07]",
-            collapsed ? "p-2" : "px-3 pt-3 pb-2",
+            isVisuallyExpanded ? "px-3 pt-3 pb-2" : "p-2",
           ].join(" ")}
         >
           <div
             className={[
               "flex gap-2",
-              collapsed
-                ? "flex-col items-center"
-                : "items-center overflow-x-auto pb-1",
+              isVisuallyExpanded
+                ? "items-center overflow-x-auto pb-1"
+                : "flex-col items-center",
             ].join(" ")}
           >
             {/* Personal workspace */}
-            <div className="group relative">
-              <button
-                type="button"
-                onClick={() => selectWorkspace("personal")}
-                aria-label="Personal workspace"
-                aria-current={mode === "personal" ? "true" : undefined}
-                className={[
-                  railBase,
-                  mode === "personal" ? railActive : railInactive,
-                ].join(" ")}
-              >
-                <UserRound size={18} />
-              </button>
-
-              {collapsed && (
-                <span className="pointer-events-none absolute left-full top-1/2 z-[200] ml-2 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-slate-900 shadow-lg group-hover:block">
-                  Personal
-                </span>
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={() => selectWorkspace("personal")}
+              aria-label="Personal workspace"
+              aria-current={mode === "personal" ? "true" : undefined}
+              className={[
+                railBase,
+                mode === "personal" ? railActive : railInactive,
+              ].join(" ")}
+            >
+              <UserRound size={18} />
+            </button>
 
             {/* Business workspaces */}
             {organizations.map((org) => {
@@ -215,77 +250,69 @@ export default function DashboardSidebar({
               const initial = (org.name || "?").charAt(0).toUpperCase();
 
               return (
-                <div key={org._id} className="group relative">
-                  <button
-                    type="button"
-                    onClick={() => selectOrganization(org._id)}
-                    aria-label={org.name}
-                    aria-current={active ? "true" : undefined}
-                    className={[
-                      railBase,
-                      active ? railActive : railInactive,
-                    ].join(" ")}
-                  >
-                    {initial}
-                  </button>
-
-                  {collapsed && (
-                    <span className="pointer-events-none absolute left-full top-1/2 z-[200] ml-2 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-slate-900 shadow-lg group-hover:block">
-                      {org.name}
-                    </span>
-                  )}
-                </div>
+                <button
+                  key={org._id}
+                  type="button"
+                  onClick={() => selectOrganization(org._id)}
+                  aria-label={org.name}
+                  aria-current={active ? "true" : undefined}
+                  title={!isVisuallyExpanded ? org.name : undefined}
+                  className={[
+                    railBase,
+                    active ? railActive : railInactive,
+                  ].join(" ")}
+                >
+                  {initial}
+                </button>
               );
             })}
 
             {/* Create business */}
-            <div className="group relative">
-              <Link
-                href="/dashboard/organizations/new"
-                aria-label="Start a business"
-                onClick={onCloseMobile}
-                className={[
-                  railBase,
-                  "border-dashed border-white/[0.12] bg-transparent text-slate-500",
-                  "hover:border-violet-400/40 hover:bg-white/[0.04] hover:text-violet-200",
-                ].join(" ")}
-              >
-                <Plus size={18} />
-              </Link>
+            <Link
+              href="/dashboard/organizations/new"
+              aria-label="Start a business"
+              title={!isVisuallyExpanded ? "Start a business" : undefined}
+              onClick={onCloseMobile}
+              className={[
+                railBase,
+                "border-dashed border-white/[0.12] bg-transparent text-slate-500",
+                "hover:border-violet-400/40 hover:bg-white/[0.04] hover:text-violet-200",
+              ].join(" ")}
+            >
+              <Plus size={18} />
+            </Link>
 
-              {collapsed && (
-                <span className="pointer-events-none absolute left-full top-1/2 z-[200] ml-2 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-slate-900 shadow-lg group-hover:block">
-                  Start a business
-                </span>
-              )}
-            </div>
-
-            {/* Loading hint */}
             {organizationsLoading && (
               <span
                 aria-hidden="true"
                 className={[
                   "h-1.5 w-1.5 animate-pulse rounded-full bg-violet-400/60",
-                  collapsed ? "mt-1" : "ml-1",
+                  isVisuallyExpanded ? "ml-1" : "mt-1",
                 ].join(" ")}
               />
             )}
           </div>
 
-          {/* Workspace name label (expanded only) */}
-          {!collapsed && (
-            <p className="mt-3 truncate px-1 text-sm font-medium text-slate-400">
+          {/* Workspace name label (only when visibly expanded) */}
+          <div
+            className={[
+              "overflow-hidden transition-[opacity,max-height] duration-200",
+              isVisuallyExpanded
+                ? "mt-3 max-h-12 opacity-100"
+                : "mt-0 max-h-0 opacity-0",
+            ].join(" ")}
+          >
+            <p className="truncate px-1 text-sm font-medium text-slate-400">
               {mode === "personal"
                 ? "Personal"
                 : selectedOrganization?.name || "Business"}
             </p>
-          )}
-
-          {!collapsed && organizationsError && (
-            <p className="mt-1 truncate px-1 text-xs text-rose-300">
-              {organizationsError}
-            </p>
-          )}
+            {organizationsError && (
+              <p className="mt-1 truncate px-1 text-xs text-rose-300">
+                {organizationsError}
+              </p>
+            )}
+          </div>
         </div>
 
         {/* ============ Navigation ============ */}
@@ -295,118 +322,118 @@ export default function DashboardSidebar({
             const active = isActive(item.href);
 
             return (
-              <div key={item.href} className="group relative">
-                <Link
-                  href={item.href}
-                  aria-label={item.label}
-                  aria-current={active ? "page" : undefined}
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-label={item.label}
+                aria-current={active ? "page" : undefined}
+                title={!isVisuallyExpanded ? item.label : undefined}
+                className={[
+                  "flex h-11 items-center rounded-xl text-sm transition-colors",
+                  isVisuallyExpanded
+                    ? "gap-3 px-3"
+                    : "justify-center gap-0 px-0",
+                  active
+                    ? "bg-violet-500/15 font-medium text-violet-200"
+                    : "text-slate-400 hover:bg-white/[0.045] hover:text-slate-100",
+                ].join(" ")}
+              >
+                <Icon
+                  size={19}
+                  strokeWidth={active ? 2.2 : 1.8}
                   className={[
-                    "flex h-11 items-center gap-3 rounded-xl text-sm transition-colors",
-                    collapsed ? "justify-center px-0" : "px-3",
-                    active
-                      ? "bg-violet-500/15 font-medium text-violet-200"
-                      : "text-slate-400 hover:bg-white/[0.045] hover:text-slate-100",
+                    "shrink-0",
+                    active ? "text-violet-300" : "text-slate-400",
+                  ].join(" ")}
+                />
+                <span
+                  className={[
+                    "truncate transition-[opacity,max-width] duration-200",
+                    isVisuallyExpanded
+                      ? "max-w-[200px] opacity-100"
+                      : "max-w-0 overflow-hidden opacity-0",
                   ].join(" ")}
                 >
-                  <Icon
-                    size={19}
-                    strokeWidth={active ? 2.2 : 1.8}
-                    className={[
-                      "shrink-0",
-                      active
-                        ? "text-violet-300"
-                        : "text-slate-400 group-hover:text-white",
-                    ].join(" ")}
-                  />
-                  <span data-sidebar-label className="truncate">
-                    {item.label}
-                  </span>
-                </Link>
-
-                {collapsed && (
-                  <span className="pointer-events-none absolute left-full top-1/2 z-[200] ml-2 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-slate-900 shadow-lg group-hover:block">
-                    {item.label}
-                  </span>
-                )}
-              </div>
+                  {item.label}
+                </span>
+              </Link>
             );
           })}
         </nav>
 
         {/* ============ Footer ============ */}
         <div className="shrink-0 space-y-1 border-t border-white/[0.07] p-2">
-          <div className="group relative">
-            <Link
-              href="/dashboard/settings"
-              aria-label="Settings"
+          <Link
+            href="/dashboard/settings"
+            aria-label="Settings"
+            title={!isVisuallyExpanded ? "Settings" : undefined}
+            className={[
+              "flex h-11 items-center rounded-xl text-sm transition",
+              isVisuallyExpanded ? "gap-3 px-3" : "justify-center gap-0 px-0",
+              isActive("/dashboard/settings")
+                ? "bg-violet-500/15 text-violet-200"
+                : "text-slate-400 hover:bg-white/[0.045] hover:text-white",
+            ].join(" ")}
+          >
+            <Settings size={19} className="shrink-0" />
+            <span
               className={[
-                "flex h-11 items-center gap-3 rounded-xl text-sm transition",
-                collapsed ? "justify-center px-0" : "px-3",
-                isActive("/dashboard/settings")
-                  ? "bg-violet-500/15 text-violet-200"
-                  : "text-slate-400 hover:bg-white/[0.045] hover:text-white",
+                "truncate transition-[opacity,max-width] duration-200",
+                isVisuallyExpanded
+                  ? "max-w-[200px] opacity-100"
+                  : "max-w-0 overflow-hidden opacity-0",
               ].join(" ")}
             >
-              <Settings size={19} className="shrink-0" />
-              <span data-sidebar-label className="truncate">
-                Settings
-              </span>
-            </Link>
+              Settings
+            </span>
+          </Link>
 
-            {collapsed && (
-              <span className="pointer-events-none absolute left-full top-1/2 z-[200] ml-2 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-slate-900 shadow-lg group-hover:block">
-                Settings
-              </span>
-            )}
-          </div>
-
-          <div className="group relative">
-            <Link
-              href="/help"
-              aria-label="Help & support"
+          <Link
+            href="/help"
+            aria-label="Help & support"
+            title={!isVisuallyExpanded ? "Help & support" : undefined}
+            className={[
+              "flex h-11 items-center rounded-xl text-sm text-slate-400 transition hover:bg-white/[0.045] hover:text-white",
+              isVisuallyExpanded ? "gap-3 px-3" : "justify-center gap-0 px-0",
+            ].join(" ")}
+          >
+            <CircleHelp size={19} className="shrink-0" />
+            <span
               className={[
-                "flex h-11 items-center gap-3 rounded-xl text-sm text-slate-400 transition hover:bg-white/[0.045] hover:text-white",
-                collapsed ? "justify-center px-0" : "px-3",
+                "truncate transition-[opacity,max-width] duration-200",
+                isVisuallyExpanded
+                  ? "max-w-[200px] opacity-100"
+                  : "max-w-0 overflow-hidden opacity-0",
               ].join(" ")}
             >
-              <CircleHelp size={19} className="shrink-0" />
-              <span data-sidebar-label className="truncate">
-                Help & support
-              </span>
-            </Link>
+              Help & support
+            </span>
+          </Link>
 
-            {collapsed && (
-              <span className="pointer-events-none absolute left-full top-1/2 z-[200] ml-2 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-slate-900 shadow-lg group-hover:block">
-                Help & support
-              </span>
-            )}
-          </div>
-
-          <div className="group relative">
-            <button
-              type="button"
-              onClick={onToggle}
-              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-label={isPersistentlyCollapsed ? "Pin expanded" : "Collapse sidebar"}
+            title={!isVisuallyExpanded ? "Pin expanded" : undefined}
+            className={[
+              "flex h-10 w-full items-center rounded-xl border border-white/[0.07] text-xs font-medium text-slate-400 transition hover:bg-white/[0.04] hover:text-white",
+              isVisuallyExpanded
+                ? "justify-start gap-3 px-3"
+                : "justify-center gap-0 px-0",
+            ].join(" ")}
+          >
+            <LayoutDashboard size={17} className="shrink-0" />
+            <span
               className={[
-                "flex h-10 w-full items-center gap-2 rounded-xl border border-white/[0.07] text-xs font-medium text-slate-400 transition hover:bg-white/[0.04] hover:text-white",
-                collapsed ? "justify-center px-0" : "px-3",
+                "truncate transition-[opacity,max-width] duration-200",
+                isVisuallyExpanded
+                  ? "max-w-[200px] opacity-100"
+                  : "max-w-0 overflow-hidden opacity-0",
               ].join(" ")}
             >
-              {collapsed ? (
-                <LayoutDashboard size={17} className="shrink-0" />
-              ) : (
-                <span data-sidebar-label className="truncate">
-                  Collapse sidebar
-                </span>
-              )}
-            </button>
-
-            {collapsed && (
-              <span className="pointer-events-none absolute left-full top-1/2 z-[200] ml-2 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-slate-900 shadow-lg group-hover:block">
-                Expand sidebar
-              </span>
-            )}
-          </div>
+              {isPersistentlyCollapsed ? "Pin expanded" : "Collapse sidebar"}
+            </span>
+          </button>
         </div>
       </aside>
 
@@ -431,7 +458,6 @@ export default function DashboardSidebar({
           </button>
         </div>
 
-        {/* Horizontal rail */}
         <div className="flex shrink-0 gap-2 overflow-x-auto border-b border-white/[0.08] p-3">
           <button
             type="button"
