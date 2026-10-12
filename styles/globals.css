@@ -195,7 +195,10 @@ a:focus-visible,
    5. FORM CONTROLS
    ============================================================ */
 
-input, textarea, select, button { font: inherit; color: inherit; }
+@layer base {
+  input, textarea, select, button { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+}
 
 input, textarea, select {
   transition: border-color var(--duration-fast) var(--ease-out),
@@ -218,8 +221,6 @@ select {
   background-size: 1rem;
   padding-right: 2.5rem !important;
 }
-
-button { cursor: pointer; background: none; border: none; }
 
 button:disabled, input:disabled, select:disabled, textarea:disabled {
   cursor: not-allowed;

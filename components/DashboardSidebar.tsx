@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Organization = {
   _id: string;
@@ -70,6 +70,8 @@ export default function DashboardSidebar({
   onOrganizationChange,
 }: DashboardSidebarProps) {
   const pathname = usePathname();
+  const workspaceRef = useRef<HTMLDivElement>(null);
+
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [organizationsLoading, setOrganizationsLoading] = useState(true);
   const [organizationsError, setOrganizationsError] = useState("");
@@ -126,15 +128,34 @@ export default function DashboardSidebar({
     };
   }, [onOrganizationChange, selectedOrganizationId]);
 
-  // Close the workspace menu when the collapsed state changes.
+  // Close the workspace menu when collapsed flips or the mobile drawer closes.
   useEffect(() => {
     setWorkspaceMenuOpen(false);
-  }, [collapsed]);
+  }, [collapsed, mobileOpen]);
 
-  // Close the workspace menu when the mobile drawer closes.
+  // Outside-click + Escape to dismiss the workspace menu.
   useEffect(() => {
-    if (!mobileOpen) setWorkspaceMenuOpen(false);
-  }, [mobileOpen]);
+    if (!workspaceMenuOpen) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      if (
+        workspaceRef.current &&
+        !workspaceRef.current.contains(event.target as Node)
+      ) {
+        setWorkspaceMenuOpen(false);
+      }
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setWorkspaceMenuOpen(false);
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [workspaceMenuOpen]);
 
   const links = mode === "personal" ? personalLinks : businessLinks;
   const selectedOrganization = organizations.find(
@@ -159,7 +180,6 @@ export default function DashboardSidebar({
 
   return (
     <>
-      {/* Mobile backdrop */}
       {mobileOpen && (
         <button
           type="button"
@@ -169,20 +189,21 @@ export default function DashboardSidebar({
         />
       )}
 
-      {/* ============================================================
-          Desktop sidebar
-          ============================================================ */}
+      {/* ===================== Desktop sidebar ===================== */}
       <aside
         data-sidebar
         data-collapsed={collapsed ? "true" : "false"}
         className={[
-          "fixed bottom-0 left-0 top-[76px] z-[90] hidden flex-col overflow-hidden border-r border-white/[0.08]",
+          "fixed bottom-0 left-0 top-[76px] z-[90] hidden flex-col border-r border-white/[0.08]",
           "bg-[#111318] transition-[width] duration-200 ease-out lg:flex",
           collapsed ? "w-[76px]" : "w-[264px]",
         ].join(" ")}
       >
-        {/* ---- Workspace switcher ---- */}
-        <div className="shrink-0 border-b border-white/[0.07] p-3">
+        {/* Workspace switcher */}
+        <div
+          ref={workspaceRef}
+          className="shrink-0 border-b border-white/[0.07] p-3"
+        >
           <div className="relative">
             <button
               type="button"
@@ -193,7 +214,7 @@ export default function DashboardSidebar({
               aria-haspopup="menu"
               onClick={() => setWorkspaceMenuOpen((value) => !value)}
               className={[
-                "flex w-full items-center gap-3 overflow-hidden rounded-xl border border-transparent p-2 text-left transition",
+                "flex w-full items-center gap-3 rounded-xl border border-transparent p-2 text-left transition",
                 "hover:border-white/[0.08] hover:bg-white/[0.04]",
                 collapsed ? "justify-center px-0" : "",
               ].join(" ")}
@@ -227,9 +248,9 @@ export default function DashboardSidebar({
               <div
                 role="menu"
                 className={[
-                  "absolute z-[130] w-56 overflow-hidden rounded-xl border border-white/10 bg-[#191c24] p-2 shadow-2xl shadow-black/40",
+                  "absolute z-[200] w-64 rounded-2xl border border-white/10 bg-[#191c24] p-2 shadow-2xl shadow-black/60",
                   collapsed
-                    ? "left-[calc(100%+8px)] top-0"
+                    ? "left-[calc(100%+10px)] top-0"
                     : "left-0 top-[calc(100%+8px)]",
                 ].join(" ")}
               >
@@ -240,7 +261,12 @@ export default function DashboardSidebar({
                 <button
                   type="button"
                   onClick={() => selectWorkspace("personal")}
-                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-200 hover:bg-white/[0.06]"
+                  className={[
+                    "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition",
+                    mode === "personal"
+                      ? "bg-violet-500/15 text-violet-100"
+                      : "text-slate-200 hover:bg-white/[0.06]",
+                  ].join(" ")}
                 >
                   <UserRound size={17} className="shrink-0 text-slate-400" />
                   <span className="flex-1 text-left">Personal</span>
@@ -252,7 +278,12 @@ export default function DashboardSidebar({
                 <button
                   type="button"
                   onClick={() => selectWorkspace("business")}
-                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-200 hover:bg-white/[0.06]"
+                  className={[
+                    "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition",
+                    mode === "business"
+                      ? "bg-violet-500/15 text-violet-100"
+                      : "text-slate-200 hover:bg-white/[0.06]",
+                  ].join(" ")}
                 >
                   <Building2 size={17} className="shrink-0 text-slate-400" />
                   <span className="flex-1 text-left">Business</span>
@@ -317,7 +348,6 @@ export default function DashboardSidebar({
             )}
           </div>
 
-          {/* Business role badge — hidden when collapsed */}
           {!collapsed && mode === "business" && selectedOrganization && (
             <p className="mt-2 truncate px-3 text-[10px] text-slate-500">
               {selectedOrganization.role
@@ -327,7 +357,7 @@ export default function DashboardSidebar({
           )}
         </div>
 
-        {/* ---- Navigation ---- */}
+        {/* Navigation */}
         <nav className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-2 py-4">
           {!collapsed && (
             <p className="mb-3 truncate px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
@@ -375,7 +405,7 @@ export default function DashboardSidebar({
           })}
         </nav>
 
-        {/* ---- Footer ---- */}
+        {/* Footer */}
         <div className="shrink-0 space-y-1 border-t border-white/[0.07] p-2">
           <Link
             href="/dashboard/settings"
@@ -434,9 +464,7 @@ export default function DashboardSidebar({
         </div>
       </aside>
 
-      {/* ============================================================
-          Mobile drawer
-          ============================================================ */}
+      {/* ===================== Mobile drawer ===================== */}
       <aside
         className={[
           "fixed bottom-0 left-0 top-[76px] z-[95] flex w-[min(300px,85vw)] flex-col overflow-hidden",
@@ -579,9 +607,7 @@ export default function DashboardSidebar({
         </div>
       </aside>
 
-      {/* ============================================================
-          Mobile bottom navigation
-          ============================================================ */}
+      {/* ===================== Mobile bottom nav ===================== */}
       <nav
         aria-label="Mobile navigation"
         className="fixed inset-x-0 bottom-0 z-[70] flex h-[68px] items-stretch justify-around border-t border-white/[0.09] bg-[#111318]/[0.98] px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
