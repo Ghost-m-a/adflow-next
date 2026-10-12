@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import styles from "@/styles/components/AppShell.module.css";
 
 type AppShellProps = {
   children: ReactNode;
@@ -16,28 +17,17 @@ export default function AppShell({
   className = "",
 }: AppShellProps) {
   return (
-    <main className={`mx-auto w-full min-w-0 max-w-[1600px] ${className}`}>
+    <main className={`${styles.shell} ${className}`}>
       {(title || description || actions) && (
-        <header className="mb-7 flex flex-col gap-4 border-b border-white/[0.07] pb-6 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            {title && (
-              <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-                {title}
-              </h1>
-            )}
-
+        <header className={styles.header}>
+          <div className={styles.titleBlock}>
+            {title && <h1 className={styles.title}>{title}</h1>}
             {description && (
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-                {description}
-              </p>
+              <p className={styles.description}>{description}</p>
             )}
           </div>
 
-          {actions && (
-            <div className="flex shrink-0 flex-wrap items-center gap-3">
-              {actions}
-            </div>
-          )}
+          {actions && <div className={styles.actions}>{actions}</div>}
         </header>
       )}
 

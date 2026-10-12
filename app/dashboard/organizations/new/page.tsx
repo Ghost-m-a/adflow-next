@@ -5,61 +5,10 @@ import { useRouter } from "next/navigation";
 
 type OrganizationType = "advertiser" | "agency";
 
-function makeOrganizationSuggestions(
-  type: OrganizationType,
-  description: string,
-  website: string
-): string[] {
-  const suffix = type === "agency" ? "Studio" : "Brands";
-  const domain = website
-    .trim()
-    .replace(/^https?:\/\//i, "")
-    .replace(/^www\./i, "")
-    .split(/[/?#:]/)[0]
-    ?.split(".")[0]
-    ?.replace(/[-_]+/g, " ")
-    .trim();
-
-  const ignored = new Set([
-    "the", "and", "for", "with", "from", "that", "this",
-    "marketing", "agency", "company", "business", "brand",
-  ]);
-
-  const keyword = description
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, " ")
-    .split(/[\s-]+/)
-    .find((word) => word.length > 2 && !ignored.has(word));
-
-  const capitalize = (value: string) =>
-    value.replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
-
-  const base = domain
-    ? capitalize(domain)
-    : keyword
-      ? capitalize(keyword)
-      : type === "agency"
-        ? "Creative"
-        : "Bright";
-
-  const candidates = [
-    `${base} ${suffix}`,
-    `${base} Creative`,
-    `${base} Collective`,
-    type === "agency" ? "BrightPath Agency" : "BrightPath Brands",
-    type === "agency" ? "Nova Creative Studio" : "Nova Brand House",
-  ];
-
-  return [...new Set(candidates.map((name) => name.trim()))]
-    .filter((name) => name.length > 0 && name.length <= 120)
-    .slice(0, 5);
-}
-
 export default function NewOrganizationPage() {
   const router = useRouter();
 
   const [name, setName] = useState("");
-  const [suggestions, setSuggestions] = useState<string[]>([]);
   const [type, setType] = useState<OrganizationType>("advertiser");
   const [description, setDescription] = useState("");
   const [website, setWebsite] = useState("");

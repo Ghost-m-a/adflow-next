@@ -76,7 +76,7 @@ export async function GET(_request: NextRequest, context: Context) {
 
 export async function PATCH(request: NextRequest, context: Context) {
   try {
-    const session = await requireSession();
+    await requireSession();
     const { campaignId } = await context.params;
 
     if (!mongoose.isValidObjectId(campaignId)) {

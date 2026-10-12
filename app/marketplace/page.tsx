@@ -113,7 +113,7 @@ export default function MarketplacePage() {
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-violet-400">ADFLOW marketplace</p>
             <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">Find your next collaboration</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-400">Discover active campaigns from advertisers and apply with a message about why you're a good fit.</p>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-400">Discover active campaigns from advertisers and apply with a message about why you&apos;re a good fit.</p>
           </div>
           <Link href="/dashboard" className="self-start rounded-xl border border-white/10 px-4 py-3 text-sm font-semibold text-gray-200 hover:border-violet-400/40 sm:self-auto">Campaign dashboard</Link>
         </div>
