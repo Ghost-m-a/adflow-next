@@ -29,6 +29,7 @@ export const ADVERTISER_NAV: NavItem[] = [
   { label: "Analytics",       href: "/advertiser/analytics",    icon: BarChart3 },
   { label: "Wallet",          href: "/advertiser/wallet",       icon: Wallet },
   { label: "Team",            href: "/advertiser/team",         icon: Building2 },
+  { label: "Organizations",   href: "/organizations",           icon: Building2 },
 ];
 
 export const CREATOR_NAV: NavItem[] = [

@@ -25,7 +25,6 @@ type Campaign = { _id: string; title: string };
 const STATUS_FILTERS = ["all", "pending", "accepted", "rejected", "withdrawn"] as const;
 
 export default function AdvertiserApplicationsPage() {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [items, setItems] = useState<{ app: Application; campaign: Campaign }[]>([]);
   const [filter, setFilter] = useState<(typeof STATUS_FILTERS)[number]>("all");
   const [loading, setLoading] = useState(true);
@@ -40,7 +39,6 @@ export default function AdvertiserApplicationsPage() {
       const cData = await cRes.json();
       if (!cRes.ok) throw new Error(cData.error || "Unable to load campaigns.");
       const camps: Campaign[] = cData.campaigns || [];
-      setCampaigns(camps);
 
       const results = await Promise.all(
         camps.map(async (c) => {
