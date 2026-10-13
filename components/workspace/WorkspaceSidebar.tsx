@@ -104,7 +104,7 @@ export function WorkspaceSidebar({
           </Link>
 
           <Link
-            href="/settings"
+            href="/advertiser/settings"
             title={!visuallyExpanded ? "Settings" : undefined}
             className={cn(
               "flex h-10 items-center rounded-xl text-sm text-text-muted transition hover:bg-white/[0.045] hover:text-text",
@@ -116,7 +116,7 @@ export function WorkspaceSidebar({
           </Link>
 
           <Link
-            href="/help"
+            href="/advertiser/settings"
             title={!visuallyExpanded ? "Help" : undefined}
             className={cn(
               "flex h-10 items-center rounded-xl text-sm text-text-muted transition hover:bg-white/[0.045] hover:text-text",

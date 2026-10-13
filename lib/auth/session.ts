@@ -96,11 +96,14 @@ export async function getSession(): Promise<SessionPayload | null> {
 }
 
 export function sessionCookieOptions(rememberMe: boolean) {
+  // Persist the cookie even without "remember me" so users aren't logged
+  // out when they close the tab. The JWT itself still expires after 12h
+  // (or 30d if rememberMe); the cookie just rides along.
   return {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax" as const,
     path: "/",
-    ...(rememberMe ? { maxAge: 60 * 60 * 24 * 30 } : {}),
+    maxAge: rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 24, // 30d or 1d
   };
 }

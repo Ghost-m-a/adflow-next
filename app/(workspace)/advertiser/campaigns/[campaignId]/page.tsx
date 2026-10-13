@@ -14,6 +14,7 @@ import {
 
 type Campaign = {
   _id: string;
+  slug: string;
   title: string;
   description: string;
   brief?: string;
@@ -281,7 +282,7 @@ export default function CampaignDetailPage() {
 
         <div className="flex gap-2">
           <a
-            href={`/campaigns/${campaign._id}`}
+            href={`/campaigns/${campaign.slug}`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-text-muted hover:bg-white/5 hover:text-text"
