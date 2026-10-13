@@ -1,6 +1,7 @@
 import {
   Activity,
   BarChart3,
+  Bell,
   Building2,
   Compass,
   FileCheck2,
@@ -25,11 +26,14 @@ export const ADVERTISER_NAV: NavItem[] = [
   { label: "Overview",        href: "/advertiser",              icon: Home },
   { label: "Campaigns",       href: "/advertiser/campaigns",    icon: Megaphone },
   { label: "Applications",    href: "/advertiser/applications", icon: Users, badge: "applications" },
+  { label: "Discover creators", href: "/creators",                icon: Compass },
   { label: "Submissions",     href: "/advertiser/submissions",  icon: FileVideo2 },
+  { label: "Conversions",     href: "/advertiser/conversions",  icon: Activity },
   { label: "Analytics",       href: "/advertiser/analytics",    icon: BarChart3 },
   { label: "Wallet",          href: "/advertiser/wallet",       icon: Wallet },
   { label: "Team",            href: "/advertiser/team",         icon: Building2 },
   { label: "Organizations",   href: "/organizations",           icon: Building2 },
+  { label: "Notifications",   href: "/notifications",            icon: Bell },
 ];
 
 export const CREATOR_NAV: NavItem[] = [

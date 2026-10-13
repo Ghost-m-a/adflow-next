@@ -6,6 +6,7 @@ import { requireOrganizationRole } from "@/lib/auth/requireOrganizationRole";
 import { ORGANIZATION_PERMISSIONS } from "@/lib/permissions/roles";
 import Campaign from "@/models/Campaign";
 import CampaignApplication from "@/models/CampaignApplication";
+import { notifySafe } from "@/services/notification.service";
 import { reviewApplicationSchema } from "@/lib/validation/application";
 
 type Context = {
@@ -141,6 +142,23 @@ export async function PATCH(request: NextRequest, context: Context) {
         { status: 409 },
       );
     }
+
+    notifySafe({
+      userId: updated.creatorId,
+      type: "application",
+      title:
+        updated.status === "accepted"
+          ? "Application accepted"
+          : "Application not selected",
+      message:
+        updated.status === "accepted"
+          ? `You were accepted into "${campaign.title}". Check your tracking links.`
+          : `Your application for "${campaign.title}" was not selected this time.`,
+      href:
+        updated.status === "accepted"
+          ? "/creator/links"
+          : "/creator/applications",
+    });
 
     return NextResponse.json({
       application: {
