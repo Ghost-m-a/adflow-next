@@ -2,397 +2,206 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-
-type Campaign = {
-   _id: string;
-   title: string;
-   status: string;
-};
+import { Button, Card, CardContent, EmptyState } from "@/components/ui";
+import { Users } from "lucide-react";
 
 type Application = {
-   _id: string;
-   campaignId?: string;
-   creatorId?: string;
-   creatorProfileId?: {
-      displayName?: string;
-      username?: string;
-      avatarUrl?: string;
-      country?: string;
-      niches?: string[];
-   } | null;
-   message?: string;
-   proposedRate?: number;
-   status: "pending" | "accepted" | "rejected" | "withdrawn";
-   createdAt?: string;
+  _id: string;
+  status: "pending" | "accepted" | "rejected" | "withdrawn";
+  message?: string;
+  proposedRate?: number;
+  createdAt?: string;
+  campaignId?: string;
+  creatorProfileId?: {
+    displayName?: string;
+    username?: string;
+    country?: string;
+    niches?: string[];
+  } | null;
 };
 
-type ApplicationItem = {
-   application: Application;
-   campaign: Campaign;
-};
+type Campaign = { _id: string; title: string };
 
-export default function ApplicationsPage() {
-   const [items, setItems] = useState<ApplicationItem[]>([]);
-   const [loading, setLoading] = useState(true);
-   const [error, setError] = useState("");
-   const [filter, setFilter] = useState("all");
-   const [updating, setUpdating] = useState<string | null>(null);
+const STATUS_FILTERS = ["all", "pending", "accepted", "rejected", "withdrawn"] as const;
 
-   const loadApplications = useCallback(async () => {
-      setLoading(true);
-      setError("");
+export default function AdvertiserApplicationsPage() {
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [items, setItems] = useState<{ app: Application; campaign: Campaign }[]>([]);
+  const [filter, setFilter] = useState<(typeof STATUS_FILTERS)[number]>("all");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [updating, setUpdating] = useState<string | null>(null);
 
-      try {
-         const campaignsResponse = await fetch("/api/campaigns", {
-            cache: "no-store",
-         });
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const cRes = await fetch("/api/campaigns", { cache: "no-store" });
+      const cData = await cRes.json();
+      if (!cRes.ok) throw new Error(cData.error || "Unable to load campaigns.");
+      const camps: Campaign[] = cData.campaigns || [];
+      setCampaigns(camps);
 
-         const campaignsData = await campaignsResponse.json();
+      const results = await Promise.all(
+        camps.map(async (c) => {
+          const r = await fetch(`/api/campaigns/${c._id}/applications`, { cache: "no-store" });
+          if (r.status === 403 || r.status === 404) return [];
+          if (!r.ok) return [];
+          const d = await r.json();
+          return (d.applications || []).map((app: Application) => ({ app, campaign: c }));
+        })
+      );
+      setItems(results.flat());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to load applications.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-         if (!campaignsResponse.ok) {
-            throw new Error(
-               campaignsData.error || "Could not load your campaigns.",
-            );
-         }
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-         const campaigns: Campaign[] = campaignsData.campaigns || [];
+  async function review(campaignId: string, applicationId: string, status: "accepted" | "rejected") {
+    const key = `${campaignId}:${applicationId}`;
+    setUpdating(key);
+    setError("");
+    try {
+      const r = await fetch(`/api/campaigns/${campaignId}/applications/${applicationId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Unable to update.");
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to update.");
+    } finally {
+      setUpdating(null);
+    }
+  }
 
-         const results = await Promise.all(
-            campaigns.map(async (campaign) => {
-               try {
-                  const response = await fetch(
-                     `/api/campaigns/${campaign._id}/applications`,
-                     { cache: "no-store" },
-                  );
+  const visible = items.filter(({ app }) => filter === "all" || app.status === filter);
+  const pendingCount = items.filter(({ app }) => app.status === "pending").length;
 
-                  // Campaigns the current user cannot manage are skipped.
-                  if (response.status === 403 || response.status === 404) {
-                     return [];
-                  }
+  return (
+    <div className="space-y-6">
+      <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-400">
+            Campaign management
+          </p>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
+            Creator applications
+          </h1>
+          <p className="mt-2 text-sm text-text-muted">
+            Review applicants and manage your campaign partnerships.
+          </p>
+        </div>
+        <Link href="/advertiser/campaigns">
+          <Button variant="outline">View campaigns</Button>
+        </Link>
+      </header>
 
-                  const data = await response.json();
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card><CardContent className="p-5"><p className="text-sm text-text-muted">Total applications</p><p className="mt-2 text-3xl font-bold">{items.length}</p></CardContent></Card>
+        <Card className="border-amber-400/20 bg-amber-400/[0.06]"><CardContent className="p-5"><p className="text-sm text-amber-300">Awaiting review</p><p className="mt-2 text-3xl font-bold text-amber-200">{pendingCount}</p></CardContent></Card>
+        <Card className="border-emerald-400/20 bg-emerald-400/[0.06]"><CardContent className="p-5"><p className="text-sm text-emerald-300">Accepted</p><p className="mt-2 text-3xl font-bold text-emerald-200">{items.filter(({app}) => app.status === "accepted").length}</p></CardContent></Card>
+      </div>
 
-                  if (!response.ok) return [];
+      {error && (
+        <div role="alert" className="rounded-xl border border-red-400/20 bg-red-400/10 p-4 text-sm text-red-300">
+          {error}
+        </div>
+      )}
 
-                  return (data.applications || []).map(
-                     (application: Application) => ({
-                        application,
-                        campaign,
-                     }),
-                  );
-               } catch {
-                  return [];
-               }
-            }),
-         );
+      <div className="flex flex-wrap gap-2">
+        {STATUS_FILTERS.map((s) => (
+          <button
+            key={s}
+            onClick={() => setFilter(s)}
+            className={[
+              "rounded-full px-4 py-2 text-sm font-medium capitalize transition",
+              filter === s
+                ? "bg-brand-500 text-white"
+                : "border border-border bg-surface-2 text-text-muted hover:bg-white/5",
+            ].join(" ")}
+          >
+            {s === "all" ? "All applications" : s}
+          </button>
+        ))}
+      </div>
 
-         setItems(results.flat());
-      } catch (err) {
-         setError(
-            err instanceof Error
-               ? err.message
-               : "Something went wrong while loading applications.",
-         );
-      } finally {
-         setLoading(false);
-      }
-   }, []);
-
-   useEffect(() => {
-      void loadApplications();
-   }, [loadApplications]);
-
-   async function updateApplication(
-      campaignId: string,
-      applicationId: string,
-      status: "accepted" | "rejected",
-   ) {
-      const key = `${campaignId}:${applicationId}`;
-      setUpdating(key);
-      setError("");
-
-      try {
-         const response = await fetch(
-            `/api/campaigns/${campaignId}/applications/${applicationId}`,
-            {
-               method: "PATCH",
-               headers: { "Content-Type": "application/json" },
-               body: JSON.stringify({ status }),
-            },
-         );
-
-         const data = await response.json();
-
-         if (!response.ok) {
-            throw new Error(data.error || "Could not update this application.");
-         }
-
-         await loadApplications();
-      } catch (err) {
-         setError(
-            err instanceof Error
-               ? err.message
-               : "Could not update this application.",
-         );
-      } finally {
-         setUpdating(null);
-      }
-   }
-
-   const visibleItems = items.filter(
-      ({ application }) => filter === "all" || application.status === filter,
-   );
-
-   const pendingCount = items.filter(
-      ({ application }) => application.status === "pending",
-   ).length;
-
-   return (
-      <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900 sm:px-6 lg:px-8">
-         <div className="mx-auto max-w-6xl">
-            <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-               <div>
-                  <p className="mb-2 text-sm font-medium text-violet-600">
-                     Campaign management
-                  </p>
-                  <h1 className="text-3xl font-bold tracking-tight">
-                     Creator applications
-                  </h1>
-                  <p className="mt-2 text-sm text-slate-500">
-                     Review applicants and manage your campaign partnerships.
-                  </p>
-               </div>
-
-               <Link
-                  href="/dashboard/campaigns"
-                  className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold hover:bg-slate-100"
-               >
-                  View campaigns
-               </Link>
-            </div>
-
-            <div className="mb-6 grid gap-4 sm:grid-cols-3">
-               <div className="rounded-2xl border border-slate-200 bg-white p-5">
-                  <p className="text-sm text-slate-500">Total applications</p>
-                  <p className="mt-2 text-3xl font-bold">{items.length}</p>
-               </div>
-               <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
-                  <p className="text-sm text-amber-800">Awaiting review</p>
-                  <p className="mt-2 text-3xl font-bold text-amber-900">
-                     {pendingCount}
-                  </p>
-               </div>
-               <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
-                  <p className="text-sm text-emerald-800">Accepted</p>
-                  <p className="mt-2 text-3xl font-bold text-emerald-900">
-                     {
-                        items.filter(
-                           ({ application }) =>
-                              application.status === "accepted",
-                        ).length
-                     }
-                  </p>
-               </div>
-            </div>
-
-            {error && (
-               <div
-                  role="alert"
-                  className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
-               >
-                  {error}
-               </div>
-            )}
-
-            <div className="mb-5 flex flex-wrap gap-2">
-               {["all", "pending", "accepted", "rejected", "withdrawn"].map(
-                  (status) => (
-                     <button
-                        key={status}
-                        onClick={() => setFilter(status)}
-                        className={`rounded-full px-4 py-2 text-sm font-medium capitalize transition ${
-                           filter === status
-                              ? "bg-violet-600 text-white"
-                              : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-100"
-                        }`}
-                     >
-                        {status === "all" ? "All applications" : status}
-                     </button>
-                  ),
-               )}
-            </div>
-
-            {loading ? (
-               <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center text-slate-500">
-                  Loading applications…
-               </div>
-            ) : visibleItems.length === 0 ? (
-               <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center">
-                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-50 text-xl">
-                     ✦
+      {loading ? (
+        <p className="text-sm text-text-muted">Loading applications…</p>
+      ) : visible.length === 0 ? (
+        <EmptyState
+          icon={<Users size={20} />}
+          title="No applications found"
+          description={filter === "all" ? "Applications submitted to campaigns you manage will appear here." : `No ${filter} applications.`}
+          action={<Link href="/advertiser/campaigns"><Button>Go to campaigns</Button></Link>}
+        />
+      ) : (
+        <div className="space-y-4">
+          {visible.map(({ app, campaign }) => {
+            const profile = app.creatorProfileId;
+            const key = `${campaign._id}:${app._id}`;
+            const isPending = app.status === "pending";
+            return (
+              <Card key={key}>
+                <CardContent className="p-5 sm:p-6">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="flex min-w-0 gap-3">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-500/15 font-bold text-brand-300">
+                        {(profile?.displayName || profile?.username || "C").charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <h2 className="font-semibold">
+                          {profile?.displayName || (profile?.username ? `@${profile.username}` : "Creator")}
+                        </h2>
+                        {profile?.country && <p className="mt-1 text-xs text-text-subtle">{profile.country}</p>}
+                      </div>
+                    </div>
+                    <span className="rounded-full bg-brand-500/10 px-3 py-1 text-xs font-semibold capitalize text-brand-300">
+                      {app.status}
+                    </span>
                   </div>
-                  <h2 className="text-lg font-semibold">
-                     No applications found
-                  </h2>
-                  <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">
-                     {filter === "all"
-                        ? "Applications submitted to campaigns you manage will appear here."
-                        : `There are no ${filter} applications to display.`}
-                  </p>
-                  <Link
-                     href="/dashboard/campaigns"
-                     className="mt-5 inline-flex rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-700"
-                  >
-                     Go to campaigns
-                  </Link>
-               </div>
-            ) : (
-               <div className="space-y-4">
-                  {visibleItems.map(({ application, campaign }) => {
-                     const profile = application.creatorProfileId;
-                     const key = `${campaign._id}:${application._id}`;
-                     const isPending = application.status === "pending";
 
-                     return (
-                        <article
-                           key={key}
-                           className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
-                        >
-                           <div className="flex flex-wrap items-start justify-between gap-4">
-                              <div className="flex min-w-0 items-start gap-3">
-                                 {profile?.avatarUrl ? (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img
-                                       src={profile.avatarUrl}
-                                       alt=""
-                                       className="h-12 w-12 rounded-full object-cover"
-                                    />
-                                 ) : (
-                                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-violet-100 font-bold text-violet-700">
-                                       {(
-                                          profile?.displayName ||
-                                          profile?.username ||
-                                          "C"
-                                       )
-                                          .charAt(0)
-                                          .toUpperCase()}
-                                    </div>
-                                 )}
+                  <div className="mt-4 rounded-xl bg-white/[0.03] p-4">
+                    <p className="text-xs uppercase tracking-wide text-text-subtle">Applied to</p>
+                    <Link href={`/advertiser/campaigns/${campaign._id}`} className="mt-1 inline-block font-semibold text-brand-300 hover:underline">
+                      {campaign.title}
+                    </Link>
+                    {app.message && <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-text-muted">{app.message}</p>}
+                  </div>
 
-                                 <div className="min-w-0">
-                                    <h2 className="font-semibold">
-                                       {profile?.displayName ||
-                                          (profile?.username
-                                             ? `@${profile.username}`
-                                             : "Creator")}
-                                    </h2>
-                                    {profile?.username &&
-                                       profile?.displayName && (
-                                          <p className="text-sm text-slate-500">
-                                             @{profile.username}
-                                          </p>
-                                       )}
-                                    {profile?.country && (
-                                       <p className="mt-1 text-xs text-slate-500">
-                                          {profile.country}
-                                       </p>
-                                    )}
-                                 </div>
-                              </div>
-
-                              <span
-                                 className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${
-                                    application.status === "accepted"
-                                       ? "bg-emerald-100 text-emerald-700"
-                                       : application.status === "rejected"
-                                         ? "bg-red-100 text-red-700"
-                                         : application.status === "pending"
-                                           ? "bg-amber-100 text-amber-800"
-                                           : "bg-slate-100 text-slate-600"
-                                 }`}
-                              >
-                                 {application.status}
-                              </span>
-                           </div>
-
-                           <div className="mt-5 rounded-xl bg-slate-50 p-4">
-                              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                 Applied to campaign
-                              </p>
-                              <Link
-                                 href={`/dashboard/campaigns/${campaign._id}`}
-                                 className="mt-1 inline-block font-semibold text-violet-700 hover:underline"
-                              >
-                                 {campaign.title}
-                              </Link>
-
-                              {typeof application.proposedRate === "number" && (
-                                 <p className="mt-2 text-sm text-slate-600">
-                                    Proposed rate:{" "}
-                                    <span className="font-semibold">
-                                       {application.proposedRate.toLocaleString()}
-                                    </span>
-                                 </p>
-                              )}
-
-                              {application.message && (
-                                 <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600">
-                                    {application.message}
-                                 </p>
-                              )}
-
-                              {profile?.niches && profile.niches.length > 0 && (
-                                 <div className="mt-3 flex flex-wrap gap-2">
-                                    {profile.niches.map((niche) => (
-                                       <span
-                                          key={niche}
-                                          className="rounded-full bg-white px-3 py-1 text-xs text-slate-600 ring-1 ring-slate-200"
-                                       >
-                                          {niche}
-                                       </span>
-                                    ))}
-                                 </div>
-                              )}
-                           </div>
-
-                           {isPending && (
-                              <div className="mt-4 flex flex-wrap justify-end gap-3">
-                                 <button
-                                    disabled={updating === key}
-                                    onClick={() =>
-                                       void updateApplication(
-                                          campaign._id,
-                                          application._id,
-                                          "rejected",
-                                       )
-                                    }
-                                    className="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
-                                 >
-                                    {updating === key ? "Updating…" : "Reject"}
-                                 </button>
-                                 <button
-                                    disabled={updating === key}
-                                    onClick={() =>
-                                       void updateApplication(
-                                          campaign._id,
-                                          application._id,
-                                          "accepted",
-                                       )
-                                    }
-                                    className="rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-50"
-                                 >
-                                    {updating === key
-                                       ? "Updating…"
-                                       : "Accept creator"}
-                                 </button>
-                              </div>
-                           )}
-                        </article>
-                     );
-                  })}
-               </div>
-            )}
-         </div>
-      </main>
-   );
+                  {isPending && (
+                    <div className="mt-4 flex flex-wrap justify-end gap-3">
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        disabled={updating === key}
+                        onClick={() => void review(campaign._id, app._id, "rejected")}
+                      >
+                        Reject
+                      </Button>
+                      <Button
+                        size="sm"
+                        disabled={updating === key}
+                        onClick={() => void review(campaign._id, app._id, "accepted")}
+                      >
+                        {updating === key ? "Updating…" : "Accept creator"}
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
