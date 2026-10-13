@@ -11,6 +11,8 @@ import {
   markHeldEntriesPaid,
 } from "@/services/ledger.service";
 import { notifySafe } from "@/services/notification.service";
+import { sendPayoutSentEmail, sendSafe } from "@/services/email.service";
+import User from "@/models/User";
 
 function generateReference(): string {
   return `PO-${randomBytes(5).toString("hex").toUpperCase()}`;
@@ -210,6 +212,19 @@ export async function markPayoutPaid(
     message: `${payout.currency} ${payout.amount.toFixed(2)} was sent to ${payout.destinationSnapshot?.label ?? "your account"}.`,
     href: "/creator/payouts",
   });
+
+  // Email copy — look up the creator's email separately.
+  const user = await User.findById(payout.userId).select("email name").lean();
+  if (user?.email) {
+    sendSafe(sendPayoutSentEmail, {
+      to: user.email,
+      name: user.name ?? "there",
+      amount: payout.amount,
+      currency: payout.currency,
+      destinationLabel: payout.destinationSnapshot?.label ?? "your account",
+      reference: payout.reference,
+    });
+  }
 
   return payout;
 }

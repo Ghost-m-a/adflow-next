@@ -12,6 +12,7 @@ import {
   Skeleton,
 } from "@/components/ui";
 import { FileCheck2, Plus, Send, X } from "lucide-react";
+import { FileUpload, type UploadedFile } from "@/components/uploads/FileUpload";
 
 type Campaign = {
   _id: string;
@@ -266,6 +267,7 @@ function SubmissionForm({
   const [description, setDescription] = useState("");
   const [contentType, setContentType] = useState("post");
   const [contentUrl, setContentUrl] = useState("");
+  const [thumbnail, setThumbnail] = useState<UploadedFile | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -369,6 +371,15 @@ function SubmissionForm({
           required
         />
       </div>
+
+      <FileUpload
+        kind="submission-thumbnail"
+        label="Thumbnail (optional)"
+        helper="A preview image for the submitted content"
+        preview="wide"
+        value={thumbnail}
+        onChange={setThumbnail}
+      />
 
       {error && (
         <p role="alert" className="rounded-xl border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-300">

@@ -11,6 +11,8 @@ import {
   promoteConversion,
   reverseConversion,
 } from "@/services/ledger.service";
+import { platformFeePct } from "@/lib/payments/billing-provider";
+import { splitPlatformFee } from "@/services/wallet.service";
 import { notifySafe } from "@/services/notification.service";
 
 export type RecordConversionInput = {
@@ -89,6 +91,9 @@ export async function recordConversion(input: RecordConversionInput) {
 
   // Create pending ledger entries (only if we know who to pay).
   if (creatorId) {
+    const feePct = platformFeePct();
+    const { platformFee } = splitPlatformFee(conversion.amount, feePct);
+
     await recordConversionPending({
       conversionId: conversion._id,
       organizationId: conversion.advertiserOrganizationId,
@@ -96,6 +101,7 @@ export async function recordConversion(input: RecordConversionInput) {
       campaignId: conversion.campaignId,
       amount: conversion.amount,
       currency: conversion.currency,
+      platformFee,
     });
   }
 

@@ -10,36 +10,53 @@ export async function recordConversionPending(input: {
   campaignId: mongoose.Types.ObjectId;
   amount: number;
   currency: string;
+  /** Optional — the platform's cut, recorded as a separate pending entry. */
+  platformFee?: number;
 }) {
   const ref = `conv:${input.conversionId.toString()}`;
+  const fee = input.platformFee ?? 0;
+  const creatorAmount = Number((input.amount - fee).toFixed(2));
 
-  await LedgerEntry.insertMany(
-    [
-      {
-        conversionId: input.conversionId,
-        campaignId: input.campaignId,
-        userId: input.creatorId,
-        type: "credit",
-        status: "pending",
-        amount: input.amount,
-        currency: input.currency,
-        reference: ref,
-        description: "Pending creator reward",
-      },
-      {
-        conversionId: input.conversionId,
-        campaignId: input.campaignId,
-        organizationId: input.organizationId,
-        type: "debit",
-        status: "pending",
-        amount: input.amount,
-        currency: input.currency,
-        reference: ref,
-        description: "Pending advertiser charge",
-      },
-    ],
-    { ordered: true },
-  );
+  const entries: Record<string, unknown>[] = [
+    {
+      conversionId: input.conversionId,
+      campaignId: input.campaignId,
+      userId: input.creatorId,
+      type: "credit",
+      status: "pending",
+      amount: creatorAmount,
+      currency: input.currency,
+      reference: ref,
+      description: "Pending creator reward",
+    },
+    {
+      conversionId: input.conversionId,
+      campaignId: input.campaignId,
+      organizationId: input.organizationId,
+      type: "debit",
+      status: "pending",
+      amount: input.amount,
+      currency: input.currency,
+      reference: ref,
+      description: "Pending advertiser charge",
+    },
+  ];
+
+  if (fee > 0) {
+    entries.push({
+      conversionId: input.conversionId,
+      campaignId: input.campaignId,
+      organizationId: input.organizationId,
+      type: "fee",
+      status: "pending",
+      amount: fee,
+      currency: input.currency,
+      reference: `${ref}:fee`,
+      description: "Platform fee",
+    });
+  }
+
+  await LedgerEntry.insertMany(entries, { ordered: true });
 }
 
 /** Promote all pending entries for a conversion to available. */

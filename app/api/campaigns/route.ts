@@ -8,6 +8,7 @@ import Campaign from "@/models/Campaign";
 import Membership from "@/models/Membership";
 import Organization from "@/models/Organization";
 import { createCampaignSchema } from "@/lib/validation/campaign";
+import { ensureBudgetHeadroom, WalletError } from "@/services/wallet.service";
 
 function errorStatus(error: unknown) {
   if (
@@ -166,6 +167,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Budget guardrail — only enforce when publishing as active.
+    if (input.status === "active") {
+      await ensureBudgetHeadroom({
+        organizationId: organization._id.toString(),
+        currency: input.currency,
+        additionalBudget: input.budget,
+      });
+    }
+
     const campaign = await Campaign.create({
       ...input,
       organizationId: organization._id,
@@ -178,6 +188,12 @@ export async function POST(request: NextRequest) {
       { status: 201 },
     );
   } catch (error) {
+    if (error instanceof WalletError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode },
+      );
+    }
     const status = errorStatus(error);
     if (status === 401 || status === 403 || status === 404) {
       return NextResponse.json(

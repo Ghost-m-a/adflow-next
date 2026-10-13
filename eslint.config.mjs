@@ -28,6 +28,19 @@ const eslintConfig = defineConfig([
       // server components), then remove this override to re-enable the
       // rule.
       "react-hooks/set-state-in-effect": "off",
+
+      // Ignore unused identifiers that are intentionally prefixed with
+      // an underscore. This is the standard convention for "unused by
+      // design" parameters — e.g. interface-mandated args in stubs.
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+          destructuredArrayIgnorePattern: "^_",
+        },
+      ],
     },
   },
 ]);

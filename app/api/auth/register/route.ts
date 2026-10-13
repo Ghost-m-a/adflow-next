@@ -14,6 +14,11 @@ import {
    internalErrorResponse,
    validationErrorResponse,
 } from "@/lib/auth/authResponse";
+import {
+   sendSafe,
+   sendVerificationEmail,
+   sendWelcomeEmail,
+} from "@/services/email.service";
 
 export const runtime = "nodejs";
 
@@ -115,6 +120,11 @@ export async function POST(request: NextRequest) {
          token,
          sessionCookieOptions(false),
       );
+
+      // Fire-and-forget — never block the signup response on email.
+      const userId = user._id.toString();
+      sendSafe(sendWelcomeEmail, userId);
+      sendSafe(sendVerificationEmail, userId);
 
       return response;
    } catch (error) {

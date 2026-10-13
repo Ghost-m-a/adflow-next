@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
+import { FileUpload, type UploadedFile } from "@/components/uploads/FileUpload";
 
 export type OrganizationOption = {
   _id: string;
@@ -10,28 +11,42 @@ export type OrganizationOption = {
   role?: string;
 };
 
-type CreatedCampaign = {
-  _id?: string;
-  [key: string]: unknown;
-};
+type CreatedCampaign = { _id?: string; [key: string]: unknown };
 
 type CampaignFormProps = {
   organizations: OrganizationOption[];
   onCreated: (campaign: CreatedCampaign) => void;
 };
 
-const platforms = [
-  { value: "instagram", label: "Instagram" },
-  { value: "tiktok", label: "TikTok" },
+const PLATFORM_OPTIONS = [
   { value: "youtube", label: "YouTube" },
+  { value: "tiktok", label: "TikTok" },
+  { value: "instagram", label: "Instagram" },
   { value: "facebook", label: "Facebook" },
   { value: "x", label: "X" },
   { value: "twitch", label: "Twitch" },
-  { value: "blog", label: "Blog / Website" },
+  { value: "blog", label: "Blog" },
   { value: "other", label: "Other" },
 ];
 
-const goals = [
+const CATEGORIES = [
+  "Gaming",
+  "Beauty",
+  "Fitness",
+  "Technology",
+  "Fashion",
+  "Food",
+  "Travel",
+  "Finance",
+  "Education",
+  "Entertainment",
+  "Music",
+  "Sports",
+  "Lifestyle",
+  "Business",
+];
+
+const GOALS = [
   { value: "awareness", label: "Brand awareness" },
   { value: "engagement", label: "Engagement" },
   { value: "traffic", label: "Website traffic" },
@@ -40,30 +55,11 @@ const goals = [
   { value: "content", label: "Content creation" },
 ];
 
-const countries = [
-  { value: "EG", label: "Egypt" },
-  { value: "US", label: "United States" },
-  { value: "GB", label: "United Kingdom" },
-  { value: "CA", label: "Canada" },
-  { value: "AU", label: "Australia" },
-  { value: "IN", label: "India" },
-  { value: "AE", label: "United Arab Emirates" },
-  { value: "SA", label: "Saudi Arabia" },
-  { value: "DE", label: "Germany" },
-  { value: "FR", label: "France" },
-  { value: "BR", label: "Brazil" },
-  { value: "JP", label: "Japan" },
-  { value: "NG", label: "Nigeria" },
-  { value: "ZA", label: "South Africa" },
-];
-
 const inputClass =
-  "mt-2 w-full rounded-xl border border-white/10 bg-[#0b1020] px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 disabled:cursor-not-allowed disabled:opacity-50";
+  "mt-2 w-full rounded-xl border border-white/10 bg-[#0b1020] px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 disabled:cursor-not-allowed disabled:opacity-50";
 
 const labelClass = "block text-sm font-medium text-slate-200";
-
 const helperClass = "mt-1.5 text-xs leading-5 text-slate-500";
-
 const sectionClass =
   "rounded-2xl border border-white/[0.08] bg-white/[0.025] p-5 sm:p-6";
 
@@ -78,15 +74,12 @@ function SectionHeading({
 }) {
   return (
     <div className="mb-6 flex items-start gap-3">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-violet-400/20 bg-violet-500/10 text-sm font-semibold text-violet-300">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-brand-400/20 bg-brand-500/10 text-sm font-semibold text-brand-300">
         {number}
       </div>
-
       <div>
         <h3 className="font-semibold text-white">{title}</h3>
-        <p className="mt-1 text-sm leading-5 text-slate-400">
-          {description}
-        </p>
+        <p className="mt-1 text-sm leading-5 text-slate-400">{description}</p>
       </div>
     </div>
   );
@@ -98,162 +91,145 @@ export default function CampaignForm({
 }: CampaignFormProps) {
   const [organizationId, setOrganizationId] = useState("");
 
+  /* Identity */
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [brief, setBrief] = useState("");
+  const [coverImageUrl, setCoverImageUrl] = useState("");
+  const [logoUrl, setLogoUrl] = useState("");
+  const [coverUpload, setCoverUpload] = useState<UploadedFile | null>(null);
+  const [logoUpload, setLogoUpload] = useState<UploadedFile | null>(null);
+  const [category, setCategory] = useState("");
+  const [hashtagsInput, setHashtagsInput] = useState("");
 
-  const [platform, setPlatform] = useState("instagram");
+  /* Platforms */
+  const [supportedPlatforms, setSupportedPlatforms] = useState<string[]>([]);
   const [goal, setGoal] = useState("awareness");
 
-  const [budget, setBudget] = useState("500");
-  const [reward, setReward] = useState("50");
-  const [maxCreators, setMaxCreators] = useState("10");
+  /* Reward model */
+  const [rewardModel, setRewardModel] = useState<"per_creator" | "cpm" | "hybrid">(
+    "cpm",
+  );
+  const [budget, setBudget] = useState("1000");
+  const [maxCreators, setMaxCreators] = useState("50");
+  const [rewardPerCreator, setRewardPerCreator] = useState("25");
+  const [rewardPerThousand, setRewardPerThousand] = useState("2");
+  const [rewardPerVideo, setRewardPerVideo] = useState("");
+  const [minimumPayout, setMinimumPayout] = useState("10");
 
-  const [niches, setNiches] = useState("");
-  const [countries, setCountries] = useState("");
-  const [requirements, setRequirements] = useState("");
-
+  /* Content */
+  const [requirementsInput, setRequirementsInput] = useState("");
+  const [referenceMaterialsInput, setReferenceMaterialsInput] = useState("");
   const [deadline, setDeadline] = useState("");
-  const [status, setStatus] = useState("draft");
   const [isPublic, setIsPublic] = useState(true);
+  const [status, setStatus] = useState<"draft" | "active">("draft");
 
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
   const eligibleOrganizations = useMemo(
     () =>
-      organizations.filter((organization) =>
-        ["owner", "admin", "manager"].includes(
-          organization.role?.toLowerCase() ?? "",
-        ),
+      organizations.filter((o) =>
+        ["owner", "admin", "manager"].includes(o.role?.toLowerCase() ?? ""),
       ),
     [organizations],
   );
 
-  const selectedOrganization = eligibleOrganizations.find(
-    (organization) => organization._id === organizationId,
-  );
+  const selectedOrg = eligibleOrganizations.find((o) => o._id === organizationId);
+  const currency = selectedOrg?.defaultCurrency || "USD";
 
-  const currency = selectedOrganization?.defaultCurrency || "USD";
+  function togglePlatform(value: string) {
+    setSupportedPlatforms((curr) =>
+      curr.includes(value) ? curr.filter((v) => v !== value) : [...curr, value],
+    );
+  }
 
-  const budgetValue = Number(budget);
-  const rewardValue = Number(reward);
-  const creatorCount = Number(maxCreators);
+  function splitLines(value: string): string[] {
+    return value
+      .split("\n")
+      .map((v) => v.trim())
+      .filter(Boolean);
+  }
 
-  const totalRewards = rewardValue * creatorCount;
-  const remainingBudget = budgetValue - totalRewards;
+  const hashtags = hashtagsInput
+    .split(/[,\s]+/)
+    .map((h) => h.replace(/^#/, "").trim())
+    .filter(Boolean);
+
+  const totalRewardPool =
+    rewardModel === "per_creator"
+      ? Number(rewardPerCreator) * Number(maxCreators)
+      : Number(budget);
 
   const canSubmit =
     !saving &&
     !!organizationId &&
-    !!title.trim() &&
-    !!description.trim() &&
-    Number.isFinite(budgetValue) &&
-    Number.isFinite(rewardValue) &&
-    Number.isFinite(creatorCount) &&
-    budgetValue > 0 &&
-    rewardValue > 0 &&
-    creatorCount >= 1 &&
-    Number.isInteger(creatorCount) &&
-    totalRewards <= budgetValue;
+    title.trim().length >= 3 &&
+    description.trim().length >= 20 &&
+    supportedPlatforms.length > 0 &&
+    Number(budget) > 0 &&
+    Number(maxCreators) >= 1;
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
     setError("");
 
     if (!organizationId) {
-      setError("Select an organization to manage this campaign.");
+      setError("Select an organization.");
       return;
     }
-
-    if (!title.trim() || !description.trim()) {
-      setError("Campaign title and description are required.");
-      return;
-    }
-
-    if (
-      !Number.isFinite(budgetValue) ||
-      !Number.isFinite(rewardValue) ||
-      !Number.isFinite(creatorCount) ||
-      budgetValue <= 0 ||
-      rewardValue <= 0 ||
-      creatorCount < 1 ||
-      !Number.isInteger(creatorCount)
-    ) {
-      setError("Enter a valid budget, creator reward, and creator limit.");
-      return;
-    }
-
-    if (totalRewards > budgetValue) {
-      setError(
-        "The total creator rewards cannot exceed the campaign budget.",
-      );
+    if (supportedPlatforms.length === 0) {
+      setError("Select at least one platform.");
       return;
     }
 
     setSaving(true);
 
     try {
-      const response = await fetch("/api/campaigns", {
+      const res = await fetch("/api/campaigns", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           organizationId,
           title: title.trim(),
           description: description.trim(),
           brief: brief.trim(),
-          platform,
+          platform: supportedPlatforms[0], // primary platform for legacy code
+          supportedPlatforms,
           goal,
-          budget: budgetValue,
+          budget: Number(budget),
           currency,
-          rewardPerCreator: rewardValue,
-          maxCreators: creatorCount,
-          targetNiches: niches
-            .split(",")
-            .map((value) => value.trim().toLowerCase())
-            .filter(Boolean),
-
-          // An empty array means Global: no country restriction.
-          targetCountries: countries ? [countries] : [],
-
-          requirements: requirements
-            .split("\n")
-            .map((value) => value.trim())
-            .filter(Boolean),
-
+          rewardPerCreator: Number(rewardPerCreator) || 0,
+          maxCreators: Number(maxCreators),
+          targetNiches: [],
+          targetCountries: [],
+          requirements: splitLines(requirementsInput),
+          referenceMaterials: splitLines(referenceMaterialsInput),
+          hashtags,
+          category: category || undefined,
+          coverImageUrl: coverImageUrl.trim() || undefined,
+          logoUrl: logoUrl.trim() || undefined,
+          rewardModel,
+          rewardPerThousand: rewardPerThousand ? Number(rewardPerThousand) : undefined,
+          rewardPerVideo: rewardPerVideo ? Number(rewardPerVideo) : undefined,
+          minimumPayout: minimumPayout ? Number(minimumPayout) : 0,
           applicationDeadline: deadline || undefined,
           isPublic,
           status,
         }),
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
+      const data = await res.json();
+      if (!res.ok) {
         const details = data.issues
-          ?.map((issue: { message: string }) => issue.message)
+          ?.map((i: { message: string }) => i.message)
           .join(" ");
-
-        throw new Error(
-          details || data.error || "Unable to create campaign.",
-        );
-      }
-
-      if (!data.campaign) {
-        throw new Error(
-          "The campaign may have been created, but the server response was unexpected. Refresh the page before trying again.",
-        );
+        throw new Error(details || data.error || "Unable to create campaign.");
       }
 
       onCreated(data.campaign as CreatedCampaign);
-    } catch (submissionError) {
-      setError(
-        submissionError instanceof Error
-          ? submissionError.message
-          : "Something went wrong while creating your campaign.",
-      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to create campaign.");
     } finally {
       setSaving(false);
     }
@@ -262,421 +238,490 @@ export default function CampaignForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Header */}
-      <div className="relative overflow-hidden rounded-2xl border border-violet-400/15 bg-gradient-to-br from-violet-500/10 via-[#111426] to-[#0b1020] p-6 sm:p-8">
-        <div className="pointer-events-none absolute -right-12 -top-16 h-48 w-48 rounded-full bg-violet-500/10 blur-3xl" />
-
+      <div className="relative overflow-hidden rounded-2xl border border-brand-400/15 bg-gradient-to-br from-brand-500/10 via-[#111426] to-[#0b1020] p-6 sm:p-8">
+        <div className="pointer-events-none absolute -right-12 -top-16 h-48 w-48 rounded-full bg-brand-500/10 blur-3xl" />
         <div className="relative">
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-violet-400/20 bg-violet-500/10 px-3 py-1.5 text-xs font-medium text-violet-200">
-            <span className="h-1.5 w-1.5 rounded-full bg-violet-400" />
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-brand-400/20 bg-brand-500/10 px-3 py-1.5 text-xs font-medium text-brand-200">
+            <span className="h-1.5 w-1.5 rounded-full bg-brand-400" />
             Campaign studio
           </div>
-
           <h2 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
             Create a campaign
           </h2>
-
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-            Define your campaign, choose your audience, set creator rewards,
-            and publish your brief to the ADflow marketplace.
+            Set up a content rewards campaign. Cover image, platforms, reward rates,
+            and content requirements are all shown on the public card.
           </p>
         </div>
       </div>
 
-      {/* Organization */}
+      {/* 01 — Organization */}
       <section className={sectionClass}>
         <SectionHeading
           number="01"
           title="Organization"
-          description="Choose which organization owns and manages this campaign."
+          description="Which organization owns this campaign?"
         />
-
-        <label className={labelClass}>
-          Campaign organization
-          <select
-            className={inputClass}
-            value={organizationId}
-            onChange={(event) => setOrganizationId(event.target.value)}
-            required
-            disabled={saving}
-          >
-            <option value="">Select an organization</option>
-
-            {eligibleOrganizations.map((organization) => (
-              <option key={organization._id} value={organization._id}>
-                {organization.name} · {organization.type}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {eligibleOrganizations.length === 0 ? (
-          <div className="mt-4 rounded-xl border border-amber-400/20 bg-amber-400/5 p-4 text-sm leading-6 text-amber-200">
-            You need to be an organization owner, admin, or manager to create
-            campaigns. Create an organization or ask an organization owner to
-            grant you the appropriate role.
-          </div>
-        ) : (
-          <p className={helperClass}>
-            Only organizations where you have campaign management permissions
-            are shown.
+        <select
+          value={organizationId}
+          onChange={(e) => setOrganizationId(e.target.value)}
+          className={inputClass}
+          required
+        >
+          <option value="">Select an organization</option>
+          {eligibleOrganizations.map((org) => (
+            <option key={org._id} value={org._id}>
+              {org.name} · {org.type}
+            </option>
+          ))}
+        </select>
+        {eligibleOrganizations.length === 0 && (
+          <p className="mt-3 rounded-xl border border-amber-400/20 bg-amber-400/5 p-3 text-sm text-amber-200">
+            You need to be an owner, admin, or manager to create campaigns.
           </p>
         )}
       </section>
 
-      {/* Basic information */}
+      {/* 02 — Identity */}
       <section className={sectionClass}>
         <SectionHeading
           number="02"
-          title="Campaign details"
-          description="Tell creators what you're promoting and what success looks like."
+          title="Identity"
+          description="The cover, logo, and naming that appear on the campaign card."
         />
 
         <div className="space-y-5">
           <label className={labelClass}>
-            Campaign title <span className="text-rose-400">*</span>
+            Title <span className="text-rose-400">*</span>
             <input
-              className={inputClass}
               value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              placeholder="e.g. Summer product launch"
+              onChange={(e) => setTitle(e.target.value)}
+              className={inputClass}
+              placeholder="e.g. Warhammer 40,000: Dark Heresy — Steam Wishlist"
               maxLength={120}
               required
-              disabled={saving}
             />
-            <span className={helperClass}>
-              Choose a clear, memorable name.
-            </span>
           </label>
 
           <label className={labelClass}>
             Short description <span className="text-rose-400">*</span>
             <textarea
-              className={inputClass}
               value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder="Describe your product, audience, and campaign goals..."
+              onChange={(e) => setDescription(e.target.value)}
+              className={inputClass}
               rows={3}
               maxLength={2000}
               required
-              disabled={saving}
+              placeholder="One or two sentences shown under the title."
             />
           </label>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div>
+              <FileUpload
+                kind="campaign-cover"
+                label="Cover image"
+                helper="16:9 recommended · JPG, PNG, WebP · max 8 MB"
+                preview="wide"
+                value={coverUpload}
+                onChange={(file) => {
+                  setCoverUpload(file);
+                  setCoverImageUrl(file?.url ?? "");
+                }}
+              />
+              <label className={labelClass}>
+                <span className="mt-2 block text-xs text-text-subtle">
+                  Or paste a URL:
+                </span>
+                <input
+                  type="url"
+                  value={coverImageUrl}
+                  onChange={(e) => setCoverImageUrl(e.target.value)}
+                  className={inputClass}
+                  placeholder="https://..."
+                />
+              </label>
+            </div>
+
+            <div>
+              <FileUpload
+                kind="campaign-logo"
+                label="Logo / brand mark"
+                helper="Square recommended · JPG, PNG, WebP"
+                preview="square"
+                value={logoUpload}
+                onChange={(file) => {
+                  setLogoUpload(file);
+                  setLogoUrl(file?.url ?? "");
+                }}
+              />
+              <label className={labelClass}>
+                <span className="mt-2 block text-xs text-text-subtle">
+                  Or paste a URL:
+                </span>
+                <input
+                  type="url"
+                  value={logoUrl}
+                  onChange={(e) => setLogoUrl(e.target.value)}
+                  className={inputClass}
+                  placeholder="https://..."
+                />
+              </label>
+            </div>
+          </div>
+
+          {coverImageUrl && (
+            <div className="overflow-hidden rounded-2xl border border-white/10">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={coverImageUrl}
+                alt="Cover preview"
+                className="aspect-[16/9] w-full object-cover"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = "none";
+                }}
+              />
+            </div>
+          )}
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <label className={labelClass}>
+              Category
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className={inputClass}
+              >
+                <option value="">Select a category</option>
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className={labelClass}>
+              Hashtags
+              <input
+                value={hashtagsInput}
+                onChange={(e) => setHashtagsInput(e.target.value)}
+                className={inputClass}
+                placeholder="gaming, gta, gameplay"
+              />
+              <span className={helperClass}>
+                Comma or space separated. Shown as #tags on the card.
+              </span>
+            </label>
+          </div>
 
           <label className={labelClass}>
             Campaign brief
             <textarea
-              className={inputClass}
               value={brief}
-              onChange={(event) => setBrief(event.target.value)}
-              placeholder="Provide your creative direction, key messages, links, and deliverables..."
-              rows={5}
+              onChange={(e) => setBrief(e.target.value)}
+              className={inputClass}
+              rows={4}
               maxLength={10000}
-              disabled={saving}
+              placeholder="Full brief for creators: direction, tone, key messages, links."
             />
-            <span className={helperClass}>
-              Give creators enough detail to understand the work and
-              expectations.
-            </span>
           </label>
-
-          <div className="grid gap-5 sm:grid-cols-2">
-            <label className={labelClass}>
-              Platform
-              <select
-                className={inputClass}
-                value={platform}
-                onChange={(event) => setPlatform(event.target.value)}
-                disabled={saving}
-              >
-                {platforms.map((item) => (
-                  <option key={item.value} value={item.value}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className={labelClass}>
-              Campaign objective
-              <select
-                className={inputClass}
-                value={goal}
-                onChange={(event) => setGoal(event.target.value)}
-                disabled={saving}
-              >
-                {goals.map((item) => (
-                  <option key={item.value} value={item.value}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
         </div>
       </section>
 
-      {/* Budget */}
+      {/* 03 — Platforms */}
       <section className={sectionClass}>
         <SectionHeading
           number="03"
-          title="Budget & creator rewards"
-          description="Set your spending limit and the maximum number of creators."
+          title="Platforms"
+          description="Which platforms can creators publish on?"
         />
 
-        <div className="grid gap-5 sm:grid-cols-3">
+        <div className="flex flex-wrap gap-2">
+          {PLATFORM_OPTIONS.map((p) => {
+            const active = supportedPlatforms.includes(p.value);
+            return (
+              <button
+                key={p.value}
+                type="button"
+                onClick={() => togglePlatform(p.value)}
+                className={[
+                  "rounded-xl border px-3.5 py-2 text-sm font-medium transition",
+                  active
+                    ? "border-brand-400/50 bg-brand-500/15 text-brand-200"
+                    : "border-white/10 bg-[#0b1020] text-slate-400 hover:border-white/20 hover:text-white",
+                ].join(" ")}
+              >
+                {p.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {supportedPlatforms.length > 0 && (
+          <p className={helperClass}>
+            {supportedPlatforms.length} selected — first one is used as the
+            primary platform.
+          </p>
+        )}
+
+        <label className={`${labelClass} mt-5`}>
+          Campaign objective
+          <select
+            value={goal}
+            onChange={(e) => setGoal(e.target.value)}
+            className={inputClass}
+          >
+            {GOALS.map((g) => (
+              <option key={g.value} value={g.value}>{g.label}</option>
+            ))}
+          </select>
+        </label>
+      </section>
+
+      {/* 04 — Reward model */}
+      <section className={sectionClass}>
+        <SectionHeading
+          number="04"
+          title="Reward model"
+          description="How creators get paid for approved content."
+        />
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          {(
+            [
+              {
+                value: "cpm",
+                label: "Cost per 1K views",
+                desc: "Pay per 1,000 verified views on approved content.",
+              },
+              {
+                value: "per_creator",
+                label: "Fixed per creator",
+                desc: "Flat reward per accepted creator.",
+              },
+              {
+                value: "hybrid",
+                label: "Hybrid",
+                desc: "Base reward plus CPM on top.",
+              },
+            ] as const
+          ).map((m) => (
+            <button
+              key={m.value}
+              type="button"
+              onClick={() => setRewardModel(m.value)}
+              className={[
+                "rounded-xl border p-4 text-left transition",
+                rewardModel === m.value
+                  ? "border-brand-400/50 bg-brand-500/10"
+                  : "border-white/[0.08] bg-[#0b1020] hover:border-white/15",
+              ].join(" ")}
+            >
+              <span className="block text-sm font-semibold text-white">
+                {m.label}
+              </span>
+              <span className="mt-1 block text-xs leading-5 text-slate-400">
+                {m.desc}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           <label className={labelClass}>
-            Total budget ({currency})
+            Total budget ({currency}) <span className="text-rose-400">*</span>
             <input
-              className={inputClass}
               type="number"
-              min="0.01"
+              min="1"
               step="0.01"
               value={budget}
-              onChange={(event) => setBudget(event.target.value)}
+              onChange={(e) => setBudget(e.target.value)}
+              className={inputClass}
               required
-              disabled={saving}
             />
           </label>
 
           <label className={labelClass}>
-            Reward per creator ({currency})
+            Creator slots
             <input
-              className={inputClass}
-              type="number"
-              min="0.01"
-              step="0.01"
-              value={reward}
-              onChange={(event) => setReward(event.target.value)}
-              required
-              disabled={saving}
-            />
-          </label>
-
-          <label className={labelClass}>
-            Maximum creators
-            <input
-              className={inputClass}
               type="number"
               min="1"
               step="1"
               value={maxCreators}
-              onChange={(event) => setMaxCreators(event.target.value)}
-              required
-              disabled={saving}
+              onChange={(e) => setMaxCreators(e.target.value)}
+              className={inputClass}
             />
+            <span className={helperClass}>Maximum number of accepted creators.</span>
+          </label>
+
+          <label className={labelClass}>
+            Minimum payout ({currency})
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={minimumPayout}
+              onChange={(e) => setMinimumPayout(e.target.value)}
+              className={inputClass}
+            />
+            <span className={helperClass}>Threshold before a creator can withdraw.</span>
+          </label>
+
+          {rewardModel === "cpm" || rewardModel === "hybrid" ? (
+            <label className={labelClass}>
+              CPM — rate per 1,000 views ({currency})
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={rewardPerThousand}
+                onChange={(e) => setRewardPerThousand(e.target.value)}
+                className={inputClass}
+                placeholder="e.g. 2.00"
+              />
+              <span className={helperClass}>
+                Shown as <strong>{currency} 2.00/1K</strong> on the card.
+              </span>
+            </label>
+          ) : null}
+
+          {rewardModel === "per_creator" || rewardModel === "hybrid" ? (
+            <label className={labelClass}>
+              Fixed reward per creator ({currency})
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={rewardPerCreator}
+                onChange={(e) => setRewardPerCreator(e.target.value)}
+                className={inputClass}
+              />
+            </label>
+          ) : null}
+
+          <label className={labelClass}>
+            Reward per approved video ({currency}) — optional
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={rewardPerVideo}
+              onChange={(e) => setRewardPerVideo(e.target.value)}
+              className={inputClass}
+              placeholder="Leave empty if not applicable"
+            />
+            <span className={helperClass}>
+              Flat bonus on top of the CPM, paid once per approved video.
+            </span>
           </label>
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-xl border border-white/[0.08] bg-[#0b1020] p-4">
-            <p className="text-xs text-slate-400">Total budget</p>
-            <p className="mt-2 text-xl font-semibold text-white">
-              {currency}{" "}
-              {Number.isFinite(budgetValue)
-                ? budgetValue.toLocaleString(undefined, {
-                    maximumFractionDigits: 2,
-                  })
-                : "—"}
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-white/[0.08] bg-[#0b1020] p-4">
-            <p className="text-xs text-slate-400">Potential rewards</p>
-            <p className="mt-2 text-xl font-semibold text-white">
-              {currency}{" "}
-              {Number.isFinite(totalRewards)
-                ? totalRewards.toLocaleString(undefined, {
-                    maximumFractionDigits: 2,
-                  })
-                : "—"}
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-white/[0.08] bg-[#0b1020] p-4">
-            <p className="text-xs text-slate-400">Remaining budget</p>
-            <p
-              className={`mt-2 text-xl font-semibold ${
-                remainingBudget < 0 ? "text-rose-400" : "text-emerald-300"
-              }`}
-            >
-              {currency}{" "}
-              {Number.isFinite(remainingBudget)
-                ? remainingBudget.toLocaleString(undefined, {
-                    maximumFractionDigits: 2,
-                  })
-                : "—"}
-            </p>
-          </div>
-        </div>
-
-        {totalRewards > budgetValue && (
-          <p className="mt-4 rounded-xl border border-rose-400/20 bg-rose-400/5 p-3 text-sm text-rose-300">
-            Your potential creator rewards exceed the budget. Reduce the reward
-            or creator limit before creating the campaign.
-          </p>
-        )}
-      </section>
-
-      {/* Audience */}
-      <section className={sectionClass}>
-        <SectionHeading
-          number="04"
-          title="Target audience"
-          description="Help the right creators discover your campaign."
-        />
-
-        <div className="space-y-5">
-          <label className={labelClass}>
-            Target niches
-            <input
-              className={inputClass}
-              value={niches}
-              onChange={(event) => setNiches(event.target.value)}
-              placeholder="beauty, fitness, technology"
-              disabled={saving}
-            />
-            <span className={helperClass}>
-              Separate niches with commas.
-            </span>
-          </label>
-
-          <label className={labelClass}>
-            Target countries
-            <select
-              className={inputClass}
-              value={countries}
-              onChange={(event) => setCountries(event.target.value)}
-              disabled={saving}
-            >
-              <option value="">🌍 Global — all countries</option>
-
-              {countriesList.map((country) => (
-                <option key={country.value} value={country.value}>
-                  {country.label} ({country.value})
-                </option>
-              ))}
-            </select>
-            <span className={helperClass}>
-              Global campaigns have no country restriction. Select a country
-              to target creators in that location.
-            </span>
-          </label>
+          <SummaryTile
+            label="Total budget"
+            value={`${currency} ${Number(budget || 0).toLocaleString()}`}
+          />
+          <SummaryTile
+            label="Reward pool"
+            value={`${currency} ${totalRewardPool.toLocaleString()}`}
+          />
+          <SummaryTile
+            label="Min payout"
+            value={`${currency} ${Number(minimumPayout || 0).toLocaleString()}`}
+          />
         </div>
       </section>
 
-      {/* Requirements */}
+      {/* 05 — Content requirements */}
       <section className={sectionClass}>
         <SectionHeading
           number="05"
-          title="Creator requirements"
-          description="Set expectations before creators apply."
+          title="Content requirements"
+          description="Shown as a numbered list on the campaign page."
         />
 
         <label className={labelClass}>
-          Requirements
+          Requirements (one per line)
           <textarea
+            value={requirementsInput}
+            onChange={(e) => setRequirementsInput(e.target.value)}
             className={inputClass}
-            value={requirements}
-            onChange={(event) => setRequirements(event.target.value)}
+            rows={5}
             placeholder={
-              "Create original content\nTag our official account\nInclude the campaign link"
+              "Video must be at least 60 seconds\nTag the official brand account\nInclude the Steam wishlist link in the description"
             }
-            rows={4}
-            disabled={saving}
+          />
+        </label>
+
+        <label className={`${labelClass} mt-5`}>
+          Reference materials (one URL per line)
+          <textarea
+            value={referenceMaterialsInput}
+            onChange={(e) => setReferenceMaterialsInput(e.target.value)}
+            className={inputClass}
+            rows={3}
+            placeholder={
+              "https://brand.com/game-brief.pdf\nhttps://drive.google.com/.../assets"
+            }
           />
           <span className={helperClass}>
-            Add one requirement per line. Each line will be saved separately.
+            Locked until a creator joins the campaign.
           </span>
         </label>
 
         <label className={`${labelClass} mt-5`}>
           Application deadline
           <input
-            className={inputClass}
             type="datetime-local"
             value={deadline}
-            onChange={(event) => setDeadline(event.target.value)}
-            disabled={saving}
+            onChange={(e) => setDeadline(e.target.value)}
+            className={inputClass}
           />
-          <span className={helperClass}>
-            Optional. Choose a future date and time if applications should
-            close automatically.
-          </span>
         </label>
       </section>
 
-      {/* Publishing */}
+      {/* 06 — Publishing */}
       <section className={sectionClass}>
         <SectionHeading
           number="06"
-          title="Publishing settings"
-          description="Choose whether to publish immediately or prepare a draft."
+          title="Publishing"
+          description="Choose whether to publish now or save as a draft."
         />
 
-        <div className="space-y-3">
-          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/[0.08] bg-[#0b1020] p-4 transition hover:border-white/15">
-            <input
-              type="checkbox"
-              checked={isPublic}
-              onChange={(event) => setIsPublic(event.target.checked)}
-              className="mt-1 h-4 w-4 shrink-0 accent-violet-500"
-              disabled={saving}
-            />
-
-            <span>
-              <span className="block text-sm font-medium text-white">
-                Show in creator marketplace
-              </span>
-              <span className="mt-1 block text-xs leading-5 text-slate-400">
-                Allow eligible creators to discover this campaign when it is
-                active.
-              </span>
+        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/[0.08] bg-[#0b1020] p-4">
+          <input
+            type="checkbox"
+            checked={isPublic}
+            onChange={(e) => setIsPublic(e.target.checked)}
+            className="mt-1 h-4 w-4 shrink-0"
+          />
+          <span>
+            <span className="block text-sm font-medium text-white">
+              Show in the public marketplace
             </span>
-          </label>
+            <span className="mt-1 block text-xs text-slate-400">
+              Eligible creators can discover and join this campaign when active.
+            </span>
+          </span>
+        </label>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => setStatus("draft")}
-              disabled={saving}
-              className={`rounded-xl border p-4 text-left transition ${
-                status === "draft"
-                  ? "border-violet-400/40 bg-violet-500/10"
-                  : "border-white/[0.08] bg-[#0b1020] hover:border-white/15"
-              }`}
-            >
-              <span className="flex items-center gap-2 text-sm font-medium text-white">
-                <span className="h-2 w-2 rounded-full bg-slate-400" />
-                Save as draft
-              </span>
-              <span className="mt-2 block text-xs leading-5 text-slate-400">
-                Prepare your campaign before activating it.
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setStatus("active")}
-              disabled={saving}
-              className={`rounded-xl border p-4 text-left transition ${
-                status === "active"
-                  ? "border-emerald-400/40 bg-emerald-500/10"
-                  : "border-white/[0.08] bg-[#0b1020] hover:border-white/15"
-              }`}
-            >
-              <span className="flex items-center gap-2 text-sm font-medium text-white">
-                <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                Publish campaign
-              </span>
-              <span className="mt-2 block text-xs leading-5 text-slate-400">
-                Activate the campaign so eligible creators can apply.
-              </span>
-            </button>
-          </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <StatusTile
+            active={status === "draft"}
+            onClick={() => setStatus("draft")}
+            dot="bg-slate-400"
+            title="Save as draft"
+            description="Prepare before activating."
+          />
+          <StatusTile
+            active={status === "active"}
+            onClick={() => setStatus("active")}
+            dot="bg-emerald-400"
+            title="Publish campaign"
+            description="Go live immediately."
+          />
         </div>
       </section>
 
-      {/* Errors */}
       {error && (
         <div
           role="alert"
@@ -687,33 +732,63 @@ export default function CampaignForm({
         </div>
       )}
 
-      {/* Actions */}
       <div className="flex flex-col-reverse gap-3 border-t border-white/[0.08] pt-6 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-xs leading-5 text-slate-500">
-          Your campaign will use your organization&apos;s default currency:{" "}
-          <span className="font-medium text-slate-300">{currency}</span>.
+        <p className="text-xs text-slate-500">
+          Uses <span className="font-medium text-slate-300">{currency}</span> from
+          the selected organization.
         </p>
-
         <button
           type="submit"
           disabled={!canSubmit || eligibleOrganizations.length === 0}
-          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-violet-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-950/20 transition hover:bg-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-400 focus:ring-offset-2 focus:ring-offset-[#0b1020] disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-500 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {saving ? (
-            <>
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-              Creating campaign...
-            </>
-          ) : (
-            <>
-              Create campaign
-              <span aria-hidden="true">→</span>
-            </>
-          )}
+          {saving ? "Creating…" : "Create campaign"}
         </button>
       </div>
     </form>
   );
 }
 
-const countriesList = countries;
+function SummaryTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-white/[0.08] bg-[#0b1020] p-4">
+      <p className="text-xs text-slate-400">{label}</p>
+      <p className="mt-2 text-lg font-semibold text-white">{value}</p>
+    </div>
+  );
+}
+
+function StatusTile({
+  active,
+  onClick,
+  dot,
+  title,
+  description,
+}: {
+  active: boolean;
+  onClick: () => void;
+  dot: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        "rounded-xl border p-4 text-left transition",
+        active
+          ? "border-brand-400/40 bg-brand-500/10"
+          : "border-white/[0.08] bg-[#0b1020] hover:border-white/15",
+      ].join(" ")}
+    >
+      <span className="flex items-center gap-2 text-sm font-medium text-white">
+        <span className={`h-2 w-2 rounded-full ${dot}`} />
+        {title}
+      </span>
+      <span className="mt-2 block text-xs leading-5 text-slate-400">
+        {description}
+      </span>
+    </button>
+  );
+}

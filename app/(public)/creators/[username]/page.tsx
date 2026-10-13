@@ -175,6 +175,28 @@ export default async function CreatorProfilePage({
       )}
 
       <div className="mt-10 rounded-2xl border border-brand-400/20 bg-brand-500/[0.06] p-5">
+        <p className="text-sm font-semibold">Want to work with @{profile.username}?</p>
+        <p className="mt-1 text-sm text-text-muted">
+          From your advertiser workspace, open any active campaign and use the
+          &quot;Invite a creator&quot; panel to send a direct invitation.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-3">
+          <Link
+            href="/advertiser/campaigns"
+            className="inline-flex rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-600"
+          >
+            Open my campaigns
+          </Link>
+          <Link
+            href="/advertiser"
+            className="inline-flex rounded-xl border border-border-strong px-4 py-2.5 text-sm font-medium text-text hover:bg-white/5"
+          >
+            Advertiser workspace
+          </Link>
+        </div>
+      </div>
+
+      <div className="hidden mt-10 rounded-2xl border border-brand-400/20 bg-brand-500/[0.06] p-5">
         <p className="text-sm text-text-muted">
           Want to work with @{profile.username}? Publish a campaign and invite
           them from the advertiser workspace.

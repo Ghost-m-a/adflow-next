@@ -9,6 +9,7 @@ import Membership from "@/models/Membership";
 import Organization from "@/models/Organization";
 import OrganizationInvitation from "@/models/OrganizationInvitation";
 import User from "@/models/User";
+import { sendOrganizationInvitationEmail } from "@/services/email.service";
 
 type RouteContext = {
    params: Promise<{
@@ -292,8 +293,26 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       ).replace(/\/+$/, "");
 
       const invitationUrl =
-         `${baseUrl}/dashboard/organizations/invitations/accept` +
+         `${baseUrl}/organizations/invitations/accept` +
          `?token=${encodeURIComponent(token)}`;
+
+      // Fire-and-forget email.
+      void (async () => {
+        try {
+          const inviter = await User.findById(access.session.userId)
+            .select("name username")
+            .lean();
+          await sendOrganizationInvitationEmail({
+            to: email,
+            organizationName: organization.name ?? "the organization",
+            role: invitationRole,
+            inviterName: inviter?.name || inviter?.username || "A teammate",
+            acceptUrl: invitationUrl,
+          });
+        } catch (err) {
+          console.error("Org invitation email failed:", err);
+        }
+      })();
 
       return NextResponse.json(
          {

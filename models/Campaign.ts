@@ -36,6 +36,19 @@ export interface CampaignDocument extends mongoose.Document {
   startsAt?: Date;
   endsAt?: Date;
   isPublic: boolean;
+
+  /* ---------- Whop-style Content Rewards fields ---------- */
+  coverImageUrl?: string;
+  logoUrl?: string;
+  category?: string;
+  hashtags: string[];
+  supportedPlatforms: string[];
+  rewardModel: "per_creator" | "cpm" | "hybrid";
+  rewardPerThousand?: number;
+  rewardPerVideo?: number;
+  minimumPayout?: number;
+  referenceMaterials: string[];
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -119,12 +132,38 @@ const CampaignSchema = new Schema<CampaignDocument>(
     startsAt: { type: Date },
     endsAt: { type: Date },
     isPublic: { type: Boolean, default: true, required: true },
+
+    /* ---------- Whop-style Content Rewards fields ---------- */
+    coverImageUrl: { type: String, trim: true, maxlength: 2048 },
+    logoUrl: { type: String, trim: true, maxlength: 2048 },
+    category: { type: String, trim: true, maxlength: 60, index: true },
+    hashtags: { type: [String], default: [] },
+    supportedPlatforms: {
+      type: [String],
+      default: [],
+      validate: {
+        validator: (v: string[]) =>
+          Array.isArray(v) && v.every((p) => p.length <= 40),
+        message: "Platform names must be 40 characters or fewer.",
+      },
+    },
+    rewardModel: {
+      type: String,
+      enum: ["per_creator", "cpm", "hybrid"],
+      default: "per_creator",
+      required: true,
+    },
+    rewardPerThousand: { type: Number, min: 0, max: 100000000 },
+    rewardPerVideo: { type: Number, min: 0, max: 100000000 },
+    minimumPayout: { type: Number, min: 0, max: 100000000, default: 0 },
+    referenceMaterials: { type: [String], default: [] },
   },
   { timestamps: true, versionKey: false },
 );
 
 CampaignSchema.index({ organizationId: 1, createdAt: -1 });
 CampaignSchema.index({ status: 1, isPublic: 1, createdAt: -1 });
+CampaignSchema.index({ category: 1, status: 1, createdAt: -1 });
 CampaignSchema.index({ organizationId: 1, slug: 1 }, { unique: true });
 
 const Campaign: Model<CampaignDocument> =
