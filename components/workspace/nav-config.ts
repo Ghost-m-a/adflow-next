@@ -8,8 +8,6 @@ import {
   Home,
   Link2,
   Megaphone,
-  MessageSquare,
-  Settings,
   Users,
   Wallet,
 } from "lucide-react";

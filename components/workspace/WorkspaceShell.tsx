@@ -4,6 +4,7 @@ import { Menu } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { WorkspaceSidebar } from "./WorkspaceSidebar";
+import NotificationBell from "@/components/NotificationBell";
 import type { WorkspaceKind } from "./nav-config";
 
 const STORAGE_KEY = "adflow:sidebar:collapsed";
@@ -94,8 +95,8 @@ export function WorkspaceShell({
           </button>
 
           <div className="ml-auto flex items-center gap-2">
-            {/* Notification + user menu slots — plug your existing components here */}
-            <div id="adflow-topbar-slot" />
+            <NotificationBell />
+            {/* User menu — paste your <UserMenu /> here when ready */}
           </div>
         </div>
       </header>
