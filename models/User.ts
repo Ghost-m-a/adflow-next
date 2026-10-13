@@ -2,6 +2,21 @@ import mongoose, { Model, Schema } from "mongoose";
 
 export type PlatformRole = "user" | "admin";
 
+export type EmailPreferenceKey =
+   | "productUpdates"
+   | "campaigns"
+   | "payouts"
+   | "notificationDigest";
+
+export type EmailPreferences = Record<EmailPreferenceKey, boolean>;
+
+export const DEFAULT_EMAIL_PREFERENCES: EmailPreferences = {
+   productUpdates: true,
+   campaigns: true,
+   payouts: true,
+   notificationDigest: true,
+};
+
 export interface IUser {
    name: string;
    username: string;
@@ -13,6 +28,14 @@ export interface IUser {
    isActive: boolean;
    platformRole: PlatformRole;
    lastLoginAt?: Date;
+   emailPreferences: EmailPreferences;
+   lastDigestAt?: Date;
+
+   /* ---------- Two-factor authentication ---------- */
+   twoFactorEnabled: boolean;
+   twoFactorSecret?: string;
+   twoFactorBackupCodes: string[];
+   twoFactorConfirmedAt?: Date;
    createdAt: Date;
    updatedAt: Date;
 }
@@ -82,6 +105,29 @@ const UserSchema = new Schema<IUser>(
       lastLoginAt: {
          type: Date,
       },
+
+      // Per-user email preferences. Transactional emails (verify,
+      // password reset) are always sent and are not represented here.
+      emailPreferences: {
+         productUpdates: { type: Boolean, default: true },
+         campaigns: { type: Boolean, default: true },
+         payouts: { type: Boolean, default: true },
+         notificationDigest: { type: Boolean, default: true },
+      },
+
+      // Used to throttle the notification digest — one send per calendar
+      // day per user.
+      lastDigestAt: { type: Date },
+
+      /* ---------- Two-factor authentication ---------- */
+      twoFactorEnabled: { type: Boolean, default: false, required: true },
+      twoFactorSecret: { type: String, select: false },
+      twoFactorBackupCodes: {
+         type: [String],
+         default: [],
+         select: false,
+      },
+      twoFactorConfirmedAt: { type: Date },
    },
    {
       timestamps: true,

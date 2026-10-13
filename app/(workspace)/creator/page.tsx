@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Button, Card, CardContent, EmptyState } from "@/components/ui";
 import { Compass, Link2, Megaphone, Wallet } from "lucide-react";
+import { RecommendedCampaigns } from "@/components/matching/RecommendedCampaigns";
 
 export const metadata = { title: "Overview · Creator · ADFLOW" };
 
@@ -38,6 +39,8 @@ export default function CreatorOverviewPage() {
           </Card>
         ))}
       </div>
+
+      <RecommendedCampaigns />
 
       <EmptyState
         icon={<Compass size={20} />}

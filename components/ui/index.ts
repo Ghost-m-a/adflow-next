@@ -5,3 +5,4 @@ export { Badge } from "./badge";
 export { Avatar } from "./avatar";
 export { Skeleton } from "./skeleton";
 export { EmptyState } from "./empty-state";
+export { PasswordInput } from "./password-input";

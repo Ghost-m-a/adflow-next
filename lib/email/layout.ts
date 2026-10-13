@@ -1,10 +1,24 @@
 export function emailLayout({
   preview,
   bodyHtml,
+  unsubscribeUrl,
 }: {
   preview?: string;
   bodyHtml: string;
+  /** Optional — required for preference-based emails. */
+  unsubscribeUrl?: string;
 }): string {
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
+  const footerUnsub = unsubscribeUrl
+    ? `<p style="margin:6px 0 0;color:#64748b;">
+         <a href="${unsubscribeUrl}" style="color:#94a3b8;text-decoration:underline;">Unsubscribe</a>
+         &nbsp;·&nbsp;
+         <a href="${appUrl}/settings/email" style="color:#94a3b8;text-decoration:underline;">Manage preferences</a>
+       </p>`
+    : "";
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -22,7 +36,7 @@ export function emailLayout({
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background:#111521;border:1px solid rgba(255,255,255,0.08);border-radius:20px;overflow:hidden;">
           <tr>
             <td style="padding:24px 28px 8px;">
-              <a href="${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}" style="text-decoration:none;">
+              <a href="${appUrl}" style="text-decoration:none;">
                 <span style="font-size:20px;font-weight:900;letter-spacing:-0.02em;color:#ffffff;">AD<span style="color:#a78bfa;">FLOW</span></span>
               </a>
             </td>
@@ -35,6 +49,7 @@ export function emailLayout({
           <tr>
             <td style="padding:16px 28px 24px;border-top:1px solid rgba(255,255,255,0.06);font-size:12px;color:#64748b;">
               <p style="margin:0;">You received this because you have an account on ADFLOW.</p>
+              ${footerUnsub}
               <p style="margin:6px 0 0;">© ${new Date().getFullYear()} ADFLOW</p>
             </td>
           </tr>
@@ -70,10 +85,6 @@ export function emailButton(href: string, label: string): string {
 
 export function emailCallout(text: string): string {
   return `<div style="margin:16px 0;padding:14px 16px;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);border-radius:12px;font-size:14px;line-height:1.55;color:#ddd6fe;">${text}</div>`;
-}
-
-export function emailDivider(): string {
-  return `<hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:20px 0;">`;
 }
 
 export function escapeHtml(value: string): string {

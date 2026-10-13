@@ -304,6 +304,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
             .lean();
           await sendOrganizationInvitationEmail({
             to: email,
+            userId: existingUser?._id?.toString(),
             organizationName: organization.name ?? "the organization",
             role: invitationRole,
             inviterName: inviter?.name || inviter?.username || "A teammate",

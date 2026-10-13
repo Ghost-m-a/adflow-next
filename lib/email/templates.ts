@@ -7,6 +7,8 @@ import {
   escapeHtml,
 } from "./layout";
 
+type TemplateInput = { unsubscribeUrl?: string };
+
 type Rendered = { subject: string; html: string; text: string };
 
 function appUrl(): string {
@@ -18,10 +20,11 @@ function appUrl(): string {
 
 /* ---------- Welcome ---------- */
 
-export function welcomeEmail(input: { name: string }): Rendered {
+export function welcomeEmail(input: { name: string } & TemplateInput): Rendered {
   const subject = "Welcome to ADFLOW";
   const html = emailLayout({
     preview: `Welcome, ${input.name}`,
+    unsubscribeUrl: input.unsubscribeUrl,
     bodyHtml: `
       ${emailHeading(`Welcome to ADFLOW, ${input.name}!`)}
       ${emailParagraph(
@@ -102,10 +105,11 @@ export function organizationInvitationEmail(input: {
   role: string;
   inviterName: string;
   acceptUrl: string;
-}): Rendered {
+} & TemplateInput): Rendered {
   const subject = `You're invited to ${input.organizationName} on ADFLOW`;
   const html = emailLayout({
     preview: `Join ${input.organizationName}`,
+    unsubscribeUrl: input.unsubscribeUrl,
     bodyHtml: `
       ${emailHeading(`Join ${escapeHtml(input.organizationName)}`)}
       ${emailParagraph(
@@ -129,10 +133,11 @@ export function campaignInvitationEmail(input: {
   advertiserName: string;
   message?: string;
   acceptUrl: string;
-}): Rendered {
+} & TemplateInput): Rendered {
   const subject = `${input.organizationName} invited you to "${input.campaignTitle}"`;
   const html = emailLayout({
     preview: `New campaign invitation`,
+    unsubscribeUrl: input.unsubscribeUrl,
     bodyHtml: `
       ${emailHeading("You have a campaign invitation")}
       ${emailParagraph(
@@ -158,7 +163,7 @@ export function campaignInvitationEmail(input: {
 export function notificationDigestEmail(input: {
   name: string;
   items: Array<{ title: string; message: string; href?: string }>;
-}): Rendered {
+} & TemplateInput): Rendered {
   const count = input.items.length;
   const subject = `${count} new update${count === 1 ? "" : "s"} on ADFLOW`;
 
@@ -179,6 +184,7 @@ export function notificationDigestEmail(input: {
 
   const html = emailLayout({
     preview: `${count} new notification${count === 1 ? "" : "s"}`,
+    unsubscribeUrl: input.unsubscribeUrl,
     bodyHtml: `
       ${emailHeading(`Hi ${escapeHtml(input.name)}, here's what's new`)}
       ${emailParagraph(
@@ -200,10 +206,11 @@ export function payoutSentEmail(input: {
   currency: string;
   destinationLabel: string;
   reference: string;
-}): Rendered {
+} & TemplateInput): Rendered {
   const subject = `Payout sent — ${input.currency} ${input.amount.toFixed(2)}`;
   const html = emailLayout({
     preview: "Your payout has been processed",
+    unsubscribeUrl: input.unsubscribeUrl,
     bodyHtml: `
       ${emailHeading("Your payout is on the way")}
       ${emailParagraph(

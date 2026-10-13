@@ -1,24 +1,37 @@
 "use client";
 
 import { Menu } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
 import { WorkspaceSidebar } from "./WorkspaceSidebar";
-import NotificationBell from "@/components/NotificationBell";
+import { MobileBottomNav } from "./MobileBottomNav";
 import type { WorkspaceKind } from "./nav-config";
 
 const STORAGE_KEY = "adflow:sidebar:collapsed";
 const MANUAL_KEY = "adflow:sidebar:manual";
 const AUTO_COLLAPSE_BELOW = 1280;
 
+/**
+ * Derives the workspace kind from the current URL.
+ * Anything under /creator/* is the creator workspace; everything
+ * else (advertiser, organizations, notifications, settings, agency)
+ * is the advertiser workspace.
+ */
+function deriveKind(pathname: string): WorkspaceKind {
+  return pathname.startsWith("/creator") ? "creator" : "advertiser";
+}
+
 export function WorkspaceShell({
-  kind,
+  kind: explicitKind,
   children,
 }: {
-  kind: WorkspaceKind;
+  kind?: WorkspaceKind;
   children: ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const kind = explicitKind ?? deriveKind(pathname);
+
   const [collapsed, setCollapsed] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -28,9 +41,7 @@ export function WorkspaceShell({
     try {
       const manual = localStorage.getItem(MANUAL_KEY) === "true";
       const saved = localStorage.getItem(STORAGE_KEY) === "true";
-      setCollapsed(
-        manual ? saved : window.innerWidth < AUTO_COLLAPSE_BELOW,
-      );
+      setCollapsed(manual ? saved : window.innerWidth < AUTO_COLLAPSE_BELOW);
     } catch {}
   }, []);
 
@@ -43,9 +54,12 @@ export function WorkspaceShell({
     return () => window.removeEventListener("keydown", onKey);
   }, [mobileOpen]);
 
-  useEffect(() => () => {
-    if (hoverTimeout.current) window.clearTimeout(hoverTimeout.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (hoverTimeout.current) window.clearTimeout(hoverTimeout.current);
+    },
+    [],
+  );
 
   function toggle() {
     setCollapsed((c) => {
@@ -73,8 +87,8 @@ export function WorkspaceShell({
 
   return (
     <div className="min-h-screen bg-canvas text-text">
-      {/* Topbar */}
-      <header className="fixed inset-x-0 top-0 z-50 h-[var(--header-h)] border-b border-border bg-canvas/95 backdrop-blur-xl">
+      {/* Fixed topbar */}
+      <header className="fixed inset-x-0 top-0 z-[100] h-[var(--header-h)] border-b border-border bg-canvas/95 backdrop-blur-xl">
         <div className="flex h-full items-center gap-3 px-3 sm:px-4">
           <button
             type="button"
@@ -95,8 +109,7 @@ export function WorkspaceShell({
           </button>
 
           <div className="ml-auto flex items-center gap-2">
-            <NotificationBell />
-            {/* User menu — paste your <UserMenu /> here when ready */}
+            <div id="adflow-topbar-slot" />
           </div>
         </div>
       </header>
@@ -112,15 +125,18 @@ export function WorkspaceShell({
         onHoverEnd={onHoverEnd}
       />
 
-      {/* Main content — margin follows PERSISTENT state only */}
+      {/* Main content — padding-bottom accounts for the mobile bottom nav */}
       <div
-        className="pt-[var(--header-h)] transition-[margin] duration-200 ease-out lg:ml-[var(--adflow-content-margin)]"
+        className="min-h-screen pt-[var(--header-h)] pb-[calc(var(--mobile-nav-height)+env(safe-area-inset-bottom))] transition-[margin] duration-200 ease-out lg:ml-[var(--adflow-content-margin)] lg:pb-0"
         style={{ "--adflow-content-margin": contentMargin } as React.CSSProperties}
       >
         <main className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
           {children}
         </main>
       </div>
+
+      {/* Mobile bottom navigation */}
+      <MobileBottomNav kind={kind} onOpenMenu={() => setMobileOpen(true)} />
     </div>
   );
 }

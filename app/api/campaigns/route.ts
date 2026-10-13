@@ -176,15 +176,29 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Moderation gate: verified orgs go straight to active, others
+    // land in the review queue.
+    const orgIsVerified = Boolean(organization.isVerified);
+    const wantsActive = input.status === "active";
+    const moderationStatus: "not_required" | "pending" =
+      wantsActive && !orgIsVerified ? "pending" : "not_required";
+    const resolvedStatus =
+      wantsActive && !orgIsVerified ? "draft" : input.status;
+
     const campaign = await Campaign.create({
       ...input,
+      status: resolvedStatus,
+      moderationStatus,
       organizationId: organization._id,
       createdBy: new mongoose.Types.ObjectId(session.userId),
       slug: campaignSlug(input.title),
     });
 
     return NextResponse.json(
-      { campaign: campaign.toObject() },
+      {
+        campaign: campaign.toObject(),
+        pendingReview: moderationStatus === "pending",
+      },
       { status: 201 },
     );
   } catch (error) {

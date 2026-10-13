@@ -15,7 +15,7 @@ export async function GET() {
 
       const user = await User.findById(session.userId)
          .select(
-            "_id name username email avatarUrl platformRole isEmailVerified createdAt",
+            "_id name username email avatarUrl platformRole isEmailVerified createdAt twoFactorEnabled",
          )
          .lean();
 
@@ -35,6 +35,7 @@ export async function GET() {
             avatarUrl: user.avatarUrl ?? "",
             platformRole: user.platformRole ?? "user",
             isEmailVerified: user.isEmailVerified,
+            twoFactorEnabled: user.twoFactorEnabled ?? false,
             createdAt: user.createdAt,
          },
       });

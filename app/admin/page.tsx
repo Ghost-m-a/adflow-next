@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui";
-import { ArrowRight, CircleDollarSign, FileText, Wallet } from "lucide-react";
+import { ArrowRight, CircleDollarSign, FileText, Wallet, Webhook } from "lucide-react";
 
 const SECTIONS = [
   {
@@ -26,6 +26,12 @@ const SECTIONS = [
     title: "Ledger",
     description: "Every financial movement, filterable.",
     icon: FileText,
+  },
+  {
+    href: "/admin/webhooks",
+    title: "Webhooks",
+    description: "Inbound events, failures, and one-click retry.",
+    icon: Webhook,
   },
 ];
 

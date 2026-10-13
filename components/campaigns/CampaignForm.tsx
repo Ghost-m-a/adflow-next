@@ -116,6 +116,7 @@ export default function CampaignForm({
   const [rewardPerThousand, setRewardPerThousand] = useState("2");
   const [rewardPerVideo, setRewardPerVideo] = useState("");
   const [minimumPayout, setMinimumPayout] = useState("10");
+  const [attributionModel, setAttributionModel] = useState<"last_click" | "first_click" | "linear" | "time_decay">("last_click");
 
   /* Content */
   const [requirementsInput, setRequirementsInput] = useState("");
@@ -213,6 +214,7 @@ export default function CampaignForm({
           rewardPerThousand: rewardPerThousand ? Number(rewardPerThousand) : undefined,
           rewardPerVideo: rewardPerVideo ? Number(rewardPerVideo) : undefined,
           minimumPayout: minimumPayout ? Number(minimumPayout) : 0,
+          attributionModel,
           applicationDeadline: deadline || undefined,
           isPublic,
           status,
@@ -611,6 +613,26 @@ export default function CampaignForm({
             />
             <span className={helperClass}>
               Flat bonus on top of the CPM, paid once per approved video.
+            </span>
+          </label>
+
+          <label className={labelClass}>
+            Attribution model
+            <select
+              value={attributionModel}
+              onChange={(e) =>
+                setAttributionModel(e.target.value as typeof attributionModel)
+              }
+              className={inputClass}
+            >
+              <option value="last_click">Last click — most recent</option>
+              <option value="first_click">First click — earliest touch</option>
+              <option value="linear">Linear — split evenly</option>
+              <option value="time_decay">Time decay — recent weighted more</option>
+            </select>
+            <span className={helperClass}>
+              How to credit multiple touches when a visitor clicks more than
+              once before converting.
             </span>
           </label>
         </div>

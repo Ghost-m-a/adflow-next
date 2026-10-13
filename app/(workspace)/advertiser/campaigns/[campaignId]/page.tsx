@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Badge, Button, Card, CardContent, Input, Skeleton } from "@/components/ui";
+import { SuggestedCreators } from "@/components/matching/SuggestedCreators";
 import {
   CheckCircle2,
   ExternalLink,
@@ -631,10 +632,13 @@ export default function CampaignDetailPage() {
           </div>
 
           <p className="mt-2 text-xs text-text-subtle">
-            Tip: browse <Link href="/creators" className="text-brand-300 hover:text-brand-200">creators</Link> and copy their username.
+            Tip: browse <Link href="/discover-creators" className="text-brand-300 hover:text-brand-200">creators</Link> and copy their username.
           </p>
         </CardContent>
       </Card>
+
+      {/* ===================== Suggested creators ===================== */}
+      <SuggestedCreators campaignId={campaignId} />
 
       {/* ===================== Progress vs slots ===================== */}
       <Card>

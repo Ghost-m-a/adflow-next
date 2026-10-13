@@ -54,6 +54,7 @@ const baseShape = {
   rewardPerThousand: OPTIONAL_NUMBER,
   rewardPerVideo: OPTIONAL_NUMBER,
   minimumPayout: OPTIONAL_NUMBER,
+  attributionModel: z.enum(["last_click", "first_click", "linear", "time_decay"]).default("last_click"),
   referenceMaterials: z
     .array(z.string().trim().url().max(2048))
     .max(20)

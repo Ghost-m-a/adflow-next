@@ -40,7 +40,7 @@ export async function requireOrganizationRole(
   await connectToDatabase();
 
   const organization = await Organization.findById(organizationId)
-    .select("_id ownerId isSuspended")
+    .select("_id ownerId isSuspended isVerified")
     .lean();
 
   if (!organization) {

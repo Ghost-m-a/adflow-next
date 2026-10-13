@@ -117,6 +117,7 @@ export async function createInvitation(input: {
   if (creator.email) {
     sendSafe(sendCampaignInvitationEmail, {
       to: creator.email,
+      userId: input.creatorId,
       campaignTitle: campaign.title,
       organizationName: org?.name ?? "ADFLOW",
       advertiserName,

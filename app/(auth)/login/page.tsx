@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Input } from "@/components/ui";
+import { Button, Input, PasswordInput } from "@/components/ui";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,6 +12,8 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [requiresTwoFactor, setRequiresTwoFactor] = useState(false);
+  const [totp, setTotp] = useState("");
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -23,9 +25,20 @@ export default function LoginPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin",
-        body: JSON.stringify({ identifier, password, rememberMe }),
+        body: JSON.stringify({
+          identifier,
+          password,
+          rememberMe,
+          ...(requiresTwoFactor ? { totp } : {}),
+        }),
       });
       const data = await res.json();
+
+      if (data.requiresTwoFactor) {
+        setRequiresTwoFactor(true);
+        setError("");
+        return;
+      }
 
       if (!res.ok) {
         setError(data.error || "Unable to sign in.");
@@ -65,10 +78,9 @@ export default function LoginPage() {
           placeholder="you@example.com or username"
         />
 
-        <Input
+        <PasswordInput
           label="Password"
           name="password"
-          type="password"
           autoComplete="current-password"
           required
           maxLength={128}
@@ -76,6 +88,37 @@ export default function LoginPage() {
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Enter your password"
         />
+
+        {requiresTwoFactor && (
+          <div>
+            <label
+              htmlFor="totp"
+              className="mb-1.5 block text-sm font-medium"
+            >
+              Two-factor code
+            </label>
+            <input
+              id="totp"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={10}
+              value={totp}
+              onChange={(e) =>
+                setTotp(
+                  e.target.value.replace(/[^\dA-Za-z-]/g, "").slice(0, 10),
+                )
+              }
+              placeholder="6 digits or backup code"
+              autoFocus
+              className="w-full rounded-xl border border-border bg-surface-2 px-3.5 py-2.5 text-sm placeholder:text-text-subtle focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+            />
+            <p className="mt-1.5 text-xs text-text-subtle">
+              Enter the 6-digit code from your authenticator app, or a backup
+              code.
+            </p>
+          </div>
+        )}
 
         <div className="flex items-center justify-between gap-3 text-sm">
           <label className="flex cursor-pointer items-center gap-2 text-text-muted">
@@ -87,7 +130,10 @@ export default function LoginPage() {
             />
             Remember me
           </label>
-          <Link href="/forgot-password" className="font-medium text-brand-300 hover:text-brand-200">
+          <Link
+            href="/forgot-password"
+            className="font-medium text-brand-300 hover:text-brand-200"
+          >
             Forgot password?
           </Link>
         </div>
@@ -102,13 +148,16 @@ export default function LoginPage() {
         )}
 
         <Button type="submit" loading={loading} className="w-full" size="lg">
-          Sign in
+          {requiresTwoFactor ? "Verify and sign in" : "Sign in"}
         </Button>
       </form>
 
       <p className="mt-6 text-center text-sm text-text-muted">
         Don&apos;t have an account?{" "}
-        <Link href="/signup" className="font-semibold text-brand-300 hover:text-brand-200">
+        <Link
+          href="/signup"
+          className="font-semibold text-brand-300 hover:text-brand-200"
+        >
           Create one
         </Link>
       </p>

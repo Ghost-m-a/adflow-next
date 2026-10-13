@@ -5,9 +5,78 @@ import ClickEvent from "@/models/ClickEvent";
 import Conversion from "@/models/Conversion";
 import CreatorProfile from "@/models/CreatorProfile";
 import Membership from "@/models/Membership";
+import DailyCampaignStats from "@/models/DailyCampaignStats";
 import Organization from "@/models/Organization";
 
 export type RangeKey = "7d" | "30d" | "90d" | "all";
+
+/** Ranges greater than this use rollups for the tail. */
+const ROLLUP_THRESHOLD_DAYS = 14;
+
+export function shouldUseRollups(from: Date): boolean {
+  const days = Math.ceil((Date.now() - from.getTime()) / 86400_000);
+  return days > ROLLUP_THRESHOLD_DAYS;
+}
+
+/**
+ * Reads aggregated stats from the daily rollup table. Used for the
+ * older portion of a large range so the analytics page stays fast.
+ */
+export async function getRollupTotals(
+  campaignIds: mongoose.Types.ObjectId[],
+  from: Date,
+  to: Date,
+): Promise<{
+  clicks: number;
+  conversions: number;
+  approved: number;
+  spend: number;
+  fees: number;
+}> {
+  if (campaignIds.length === 0) {
+    return { clicks: 0, conversions: 0, approved: 0, spend: 0, fees: 0 };
+  }
+
+  const fromKey = from.toISOString().slice(0, 10);
+  const toKey = to.toISOString().slice(0, 10);
+
+  const rows = await DailyCampaignStats.aggregate<{
+    _id: null;
+    clicks: number;
+    conversions: number;
+    approved: number;
+    spend: number;
+    fees: number;
+  }>([
+    {
+      $match: {
+        campaignId: { $in: campaignIds },
+        date: { $gte: fromKey, $lte: toKey },
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        clicks: { $sum: "$clicks" },
+        conversions: { $sum: "$conversions" },
+        approved: { $sum: "$approved" },
+        spend: { $sum: "$spend" },
+        fees: { $sum: "$fees" },
+      },
+    },
+  ]);
+
+  const r = rows[0];
+  return r
+    ? {
+        clicks: r.clicks,
+        conversions: r.conversions,
+        approved: r.approved,
+        spend: Number(r.spend.toFixed(2)),
+        fees: Number(r.fees.toFixed(2)),
+      }
+    : { clicks: 0, conversions: 0, approved: 0, spend: 0, fees: 0 };
+}
 
 export function parseRange(range: string | null | undefined): {
   range: RangeKey;

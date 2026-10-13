@@ -12,6 +12,7 @@ import {
 } from "@/services/ledger.service";
 import { notifySafe } from "@/services/notification.service";
 import { sendPayoutSentEmail, sendSafe } from "@/services/email.service";
+import { assertPayoutAllowed, TaxError } from "@/services/tax.service";
 import User from "@/models/User";
 
 function generateReference(): string {
@@ -142,6 +143,16 @@ export async function requestPayout(input: {
     );
   }
 
+  // Tax-form gate: creators above the threshold need an approved form.
+  try {
+    await assertPayoutAllowed(input.userId);
+  } catch (err) {
+    if (err instanceof TaxError) {
+      throw new PayoutError(err.message, 409);
+    }
+    throw err;
+  }
+
   // Create payout.
   const payout = await Payout.create({
     userId,
@@ -218,6 +229,7 @@ export async function markPayoutPaid(
   if (user?.email) {
     sendSafe(sendPayoutSentEmail, {
       to: user.email,
+      userId: payout.userId.toString(),
       name: user.name ?? "there",
       amount: payout.amount,
       currency: payout.currency,

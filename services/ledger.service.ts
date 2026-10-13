@@ -278,3 +278,76 @@ export async function reverseSubmissionReward(
     { $set: { status: "void" } },
   );
 }
+
+/**
+ * Records a conversion with multiple creator credits — one per
+ * attributed touch. The sum of `creatorCredits[].amount` should equal
+ * (conversion amount − platform fee).
+ */
+export async function recordMultiCreditConversionPending(input: {
+  conversionId: mongoose.Types.ObjectId;
+  organizationId: mongoose.Types.ObjectId;
+  campaignId: mongoose.Types.ObjectId;
+  amount: number;
+  currency: string;
+  platformFee: number;
+  creatorCredits: Array<{
+    creatorId: mongoose.Types.ObjectId;
+    amount: number;
+    weight: number;
+    clickEventId: mongoose.Types.ObjectId;
+  }>;
+}) {
+  const ref = `conv:${input.conversionId.toString()}`;
+  const entries: Record<string, unknown>[] = [];
+
+  // Advertiser debit for the full amount.
+  entries.push({
+    conversionId: input.conversionId,
+    campaignId: input.campaignId,
+    organizationId: input.organizationId,
+    type: "debit",
+    status: "pending",
+    amount: input.amount,
+    currency: input.currency,
+    reference: ref,
+    description: "Pending advertiser charge",
+  });
+
+  // One credit per attributed creator.
+  for (const credit of input.creatorCredits) {
+    if (credit.amount <= 0) continue;
+    entries.push({
+      conversionId: input.conversionId,
+      campaignId: input.campaignId,
+      userId: credit.creatorId,
+      type: "credit",
+      status: "pending",
+      amount: credit.amount,
+      currency: input.currency,
+      reference: ref,
+      description: "Pending creator reward",
+      metadata: {
+        clickEventId: credit.clickEventId.toString(),
+        weight: credit.weight,
+      },
+    });
+  }
+
+  // Platform fee.
+  if (input.platformFee > 0) {
+    entries.push({
+      conversionId: input.conversionId,
+      campaignId: input.campaignId,
+      organizationId: input.organizationId,
+      type: "fee",
+      status: "pending",
+      amount: input.platformFee,
+      currency: input.currency,
+      reference: `${ref}:fee`,
+      description: "Platform fee",
+    });
+  }
+
+  await LedgerEntry.insertMany(entries, { ordered: true });
+}

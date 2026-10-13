@@ -13,6 +13,12 @@ export interface OrganizationDocument extends mongoose.Document {
   defaultCurrency: string;
   isVerified: boolean;
   isSuspended: boolean;
+
+  /* ---------- Agency ---------- */
+  isAgency: boolean;
+  parentAgencyId?: mongoose.Types.ObjectId;
+  clientLabel?: string;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -89,6 +95,20 @@ const OrganizationSchema = new Schema<OrganizationDocument>(
       default: false,
       index: true,
     },
+
+    /* ---------- Agency ---------- */
+    isAgency: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    parentAgencyId: {
+      type: Schema.Types.ObjectId,
+      ref: "Organization",
+      default: null,
+      index: true,
+    },
+    clientLabel: { type: String, trim: true, maxlength: 120 },
   },
   {
     timestamps: true,

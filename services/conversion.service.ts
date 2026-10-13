@@ -5,15 +5,22 @@ import Conversion, {
 } from "@/models/Conversion";
 import Campaign from "@/models/Campaign";
 import TrackingLink from "@/models/TrackingLink";
-import { resolveAttributedClick } from "@/services/attribution.service";
+import {
+  resolveAttributedClick,
+  resolveAttributedTouches,
+  getCampaignAttributionModel,
+} from "@/services/attribution.service";
 import {
   recordConversionPending,
   promoteConversion,
   reverseConversion,
+  recordMultiCreditConversionPending,
 } from "@/services/ledger.service";
+import ConversionCredit from "@/models/ConversionCredit";
 import { platformFeePct } from "@/lib/payments/billing-provider";
 import { splitPlatformFee } from "@/services/wallet.service";
 import { notifySafe } from "@/services/notification.service";
+import { dispatchWebhookEvent } from "@/services/webhook-dispatcher.service";
 
 export type RecordConversionInput = {
   campaignId: string;
@@ -49,17 +56,32 @@ export async function recordConversion(input: RecordConversionInput) {
 
   const convertedAt = input.convertedAt ?? new Date();
 
-  // Attribute the conversion to a click when a click id was provided.
+  // Resolve attribution. Uses the campaign's configured model.
+  const model = await getCampaignAttributionModel(input.campaignId);
+
+  const touches = input.clickId
+    ? await resolveAttributedTouches({
+        explicitClickId: input.clickId,
+        convertedAt,
+        model,
+      })
+    : [];
+
+  // Legacy single-touch fallback.
   let creatorId: mongoose.Types.ObjectId | undefined;
   let trackingLinkId: mongoose.Types.ObjectId | undefined;
   let clickEventId: mongoose.Types.ObjectId | undefined;
 
-  if (input.clickId) {
-    const resolved = await resolveAttributedClick(input.clickId, convertedAt);
-    if (resolved) {
-      creatorId = resolved.click.creatorId;
-      trackingLinkId = resolved.link._id;
-      clickEventId = resolved.click._id;
+  if (touches.length > 0) {
+    // The single "primary" creator is the one with the largest weight.
+    const primary = [...touches].sort((a, b) => b.weight - a.weight)[0]!;
+    creatorId = primary.creatorId;
+    clickEventId = primary.clickEventId;
+
+    // Look up the tracking link for the primary touch if needed.
+    if (input.clickId) {
+      const resolved = await resolveAttributedClick(input.clickId, convertedAt);
+      trackingLinkId = resolved?.link._id;
     }
   }
 
@@ -89,11 +111,53 @@ export async function recordConversion(input: RecordConversionInput) {
     );
   }
 
-  // Create pending ledger entries (only if we know who to pay).
-  if (creatorId) {
+  // Write credits + ledger entries.
+  if (creatorId && touches.length > 0) {
+    const feePct = platformFeePct();
+    const { platformFee, creatorAmount: totalCreatorAmount } = splitPlatformFee(
+      conversion.amount,
+      feePct,
+    );
+
+    // One ConversionCredit per touch, weighted by the model.
+    const credits = touches.map((t) => ({
+      conversionId: conversion._id,
+      creatorId: t.creatorId,
+      clickEventId: t.clickEventId,
+      weight: t.weight,
+      amount: Number((totalCreatorAmount * t.weight).toFixed(2)),
+      currency: conversion.currency,
+    }));
+
+    // Fix rounding drift by giving the largest credit the remainder.
+    const sum = credits.reduce((s, c) => s + c.amount, 0);
+    const drift = Number((totalCreatorAmount - sum).toFixed(2));
+    if (Math.abs(drift) > 0.001 && credits.length > 0) {
+      credits.sort((a, b) => b.weight - a.weight);
+      credits[0]!.amount = Number((credits[0]!.amount + drift).toFixed(2));
+    }
+
+    await ConversionCredit.insertMany(credits, { ordered: true });
+
+    // Ledger entries — one credit per creator, one debit, one fee.
+    await recordMultiCreditConversionPending({
+      conversionId: conversion._id,
+      organizationId: conversion.advertiserOrganizationId,
+      campaignId: conversion.campaignId,
+      amount: conversion.amount,
+      currency: conversion.currency,
+      platformFee,
+      creatorCredits: credits.map((c) => ({
+        creatorId: c.creatorId,
+        amount: c.amount,
+        weight: c.weight,
+        clickEventId: c.clickEventId,
+      })),
+    });
+  } else if (creatorId) {
+    // Fallback for legacy single-touch when no touches resolve.
     const feePct = platformFeePct();
     const { platformFee } = splitPlatformFee(conversion.amount, feePct);
-
     await recordConversionPending({
       conversionId: conversion._id,
       organizationId: conversion.advertiserOrganizationId,
@@ -143,6 +207,17 @@ export async function approveConversion(
     });
   }
 
+  dispatchWebhookEvent({
+    organizationId: conversion.advertiserOrganizationId.toString(),
+    event: "conversion.approved",
+    payload: {
+      conversionId: conversion._id.toString(),
+      campaignId: conversion.campaignId.toString(),
+      amount: conversion.amount,
+      currency: conversion.currency,
+    },
+  });
+
   return conversion;
 }
 
@@ -184,6 +259,16 @@ export async function rejectConversion(
       href: "/creator/earnings",
     });
   }
+
+  dispatchWebhookEvent({
+    organizationId: conversion.advertiserOrganizationId.toString(),
+    event: "conversion.rejected",
+    payload: {
+      conversionId: conversion._id.toString(),
+      campaignId: conversion.campaignId.toString(),
+      reason,
+    },
+  });
 
   return conversion;
 }

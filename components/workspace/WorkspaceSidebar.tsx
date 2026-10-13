@@ -145,7 +145,7 @@ export function WorkspaceSidebar({
       {/* Mobile drawer */}
       <aside
         className={cn(
-          "fixed bottom-0 left-0 top-[var(--header-h)] z-50 flex w-[min(300px,85vw)] flex-col overflow-hidden",
+          "fixed bottom-[var(--mobile-nav-height)] left-0 top-[var(--header-h)] z-50 flex w-[min(300px,85vw)] flex-col overflow-hidden lg:bottom-0",
           "border-r border-border bg-surface-1 shadow-2xl transition-transform duration-200 ease-out lg:hidden",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
         )}

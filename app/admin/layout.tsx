@@ -9,6 +9,10 @@ import {
   LayoutDashboard,
   RotateCcw,
   Wallet,
+  Receipt,
+  Users,
+  Gavel,
+  Webhook,
 } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -19,7 +23,11 @@ const NAV = [
   { label: "Refunds", href: "/admin/finance/refunds", icon: RotateCcw },
   { label: "Ledger", href: "/admin/finance/ledger", icon: FileText },
   { label: "Organizations", href: "/admin/finance/organizations", icon: Building2 },
+  { label: "Campaign review", href: "/admin/moderation/campaigns", icon: Gavel },
+  { label: "Users", href: "/admin/moderation/users", icon: Users },
+  { label: "Tax", href: "/admin/tax", icon: Receipt },
   { label: "Payouts", href: "/admin/payouts", icon: Wallet },
+  { label: "Webhooks", href: "/admin/webhooks", icon: Webhook },
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {

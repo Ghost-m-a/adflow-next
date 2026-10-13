@@ -1,5 +1,7 @@
 import { Resend } from "resend";
 
+import type { EmailCategory } from "./preferences";
+
 type SendInput = {
   to: string | string[];
   subject: string;
@@ -7,6 +9,9 @@ type SendInput = {
   text?: string;
   replyTo?: string;
   headers?: Record<string, string>;
+  /** Used only for logging — the caller is responsible for the
+   * preference check. */
+  category?: EmailCategory;
 };
 
 export type EmailResult =
@@ -29,6 +34,7 @@ export async function sendEmail(input: SendInput): Promise<EmailResult> {
 
   if (p === "console") {
     console.log("\n===== EMAIL (console provider) =====");
+    console.log("Category:", input.category ?? "transactional");
     console.log("From:", fromAddress());
     console.log("To:", Array.isArray(input.to) ? input.to.join(", ") : input.to);
     console.log("Subject:", input.subject);

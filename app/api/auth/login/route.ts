@@ -14,6 +14,7 @@ import {
    internalErrorResponse,
    validationErrorResponse,
 } from "@/lib/auth/authResponse";
+import { verifyTwoFactorLogin, TwoFactorError } from "@/services/twofactor.service";
 
 export const runtime = "nodejs";
 
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
             { username: normalizedIdentifier },
             { email: normalizedIdentifier },
          ],
-      }).select("+passwordHash");
+      }).select("+passwordHash twoFactorEnabled");
 
       // Use the same error for a missing user and an incorrect password.
       if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
@@ -57,6 +58,39 @@ export async function POST(request: NextRequest) {
             { error: "This account is currently disabled." },
             { status: 403 },
          );
+      }
+
+      // Two-factor check.
+      const totp = typeof body === "object" && body !== null && "totp" in body
+        ? (body as { totp?: unknown }).totp
+        : undefined;
+
+      if (user.twoFactorEnabled) {
+        if (typeof totp !== "string" || !totp.trim()) {
+          // Signal to the client that a second factor is required.
+          return NextResponse.json(
+            { requiresTwoFactor: true },
+            { status: 200 },
+          );
+        }
+
+        try {
+          const result = await verifyTwoFactorLogin(user._id.toString(), totp.trim());
+          if (!result.ok) {
+            return NextResponse.json(
+              { error: "Invalid verification code." },
+              { status: 401 },
+            );
+          }
+        } catch (err) {
+          if (err instanceof TwoFactorError) {
+            return NextResponse.json(
+              { error: err.message },
+              { status: err.statusCode },
+            );
+          }
+          throw err;
+        }
       }
 
       user.lastLoginAt = new Date();
