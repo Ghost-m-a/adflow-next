@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Input, PasswordInput } from "@/components/ui";
+import { GoogleButton } from "@/components/auth/GoogleButton";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,6 +15,26 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [requiresTwoFactor, setRequiresTwoFactor] = useState(false);
   const [totp, setTotp] = useState("");
+
+  // Surface OAuth errors passed via ?error=...
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const e = url.searchParams.get("error");
+    if (!e) return;
+    const map: Record<string, string> = {
+      oauth_denied: "Google sign-in was cancelled.",
+      oauth_start_failed: "Could not start Google sign-in.",
+      oauth_missing_params: "Google sign-in response was incomplete.",
+      oauth_state_missing: "Google sign-in session expired. Try again.",
+      oauth_state_mismatch: "Security check failed. Try signing in again.",
+      oauth_not_configured: "Google sign-in is not available right now.",
+      oauth_callback_failed: "Google sign-in failed. Please try again.",
+      account_suspended: "This account is currently disabled.",
+    };
+    setError(map[e] ?? "Sign-in failed.");
+    url.searchParams.delete("error");
+    window.history.replaceState({}, "", url.toString());
+  }, []);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -65,6 +86,21 @@ export default function LoginPage() {
       <p className="mt-3 text-sm leading-6 text-text-muted">
         Access your campaigns, earnings, and creator dashboard.
       </p>
+
+      <div className="mt-6 space-y-4">
+        <GoogleButton label="Continue with Google" />
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t border-border" />
+          </div>
+          <div className="relative flex justify-center text-xs">
+            <span className="bg-canvas px-2 uppercase tracking-wider text-text-subtle">
+              or
+            </span>
+          </div>
+        </div>
+      </div>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <Input

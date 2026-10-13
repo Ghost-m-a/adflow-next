@@ -80,28 +80,47 @@ class LocalProvider implements UploadProvider {
 class S3Provider implements UploadProvider {
   name = "s3";
 
-  async put(): Promise<StoredFile> {
-    const endpoint = process.env.S3_ENDPOINT;
-    const bucket = process.env.S3_BUCKET;
-    const publicUrl = process.env.S3_PUBLIC_URL;
-
-    if (!endpoint || !bucket || !publicUrl) {
-      throw new Error(
-        "S3 uploads require S3_ENDPOINT, S3_BUCKET, and S3_PUBLIC_URL.",
-      );
-    }
-
-    // NOTE: This throws until a proper signer is wired. Use AWS SDK
-    // or cloudflare's signed URL endpoint to implement put() for
-    // production. The interface is intentionally narrow so swapping
-    // in the real implementation is a single-file change.
-    throw new Error(
-      "S3 uploads are not yet implemented. Set UPLOAD_PROVIDER=local for dev.",
+  async put(input: {
+    key: string;
+    body: Buffer;
+    contentType: string;
+  }): Promise<StoredFile> {
+    const { PutObjectCommand } = await import("@aws-sdk/client-s3");
+    const { getS3Client, getBucketName, buildPublicUrl } = await import(
+      "./s3-client"
     );
+
+    await getS3Client().send(
+      new PutObjectCommand({
+        Bucket: getBucketName(),
+        Key: input.key,
+        Body: input.body,
+        ContentType: input.contentType,
+      }),
+    );
+
+    return {
+      key: input.key,
+      url: buildPublicUrl(input.key),
+      size: input.body.length,
+      contentType: input.contentType,
+    };
   }
 
-  async remove(): Promise<void> {
-    // No-op in stub.
+  async remove(key: string): Promise<void> {
+    try {
+      const { DeleteObjectCommand } = await import("@aws-sdk/client-s3");
+      const { getS3Client, getBucketName } = await import("./s3-client");
+
+      await getS3Client().send(
+        new DeleteObjectCommand({
+          Bucket: getBucketName(),
+          Key: key,
+        }),
+      );
+    } catch {
+      // Best-effort — never throws.
+    }
   }
 }
 

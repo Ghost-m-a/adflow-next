@@ -37,25 +37,101 @@ export function FileUpload({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [error, setError] = useState("");
 
   async function handleFile(file: File) {
     setError("");
     setBusy(true);
-    try {
-      const form = new FormData();
-      form.append("kind", kind);
-      form.append("file", file);
+    setProgress(0);
 
-      const res = await fetch("/api/uploads", { method: "POST", body: form });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Upload failed.");
-      onChange(data.upload as UploadedFile);
+    try {
+      // 1. Try presigned flow first.
+      const presignRes = await fetch("/api/uploads/presign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kind,
+          contentType: file.type,
+          size: file.size,
+        }),
+      });
+
+      if (presignRes.status === 503) {
+        // Fall back to server proxy.
+        await proxyUpload(file);
+        return;
+      }
+
+      if (!presignRes.ok) {
+        const data = await presignRes.json().catch(() => ({}));
+        throw new Error(data.error || "Unable to presign upload.");
+      }
+
+      const presign = (await presignRes.json()) as {
+        uploadUrl: string;
+        key: string;
+        publicUrl: string;
+      };
+
+      // 2. Upload directly to S3 with progress via XHR.
+      await uploadDirect(presign.uploadUrl, file);
+
+      // 3. Confirm the upload with the server.
+      const confirmRes = await fetch("/api/uploads/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: presign.key }),
+      });
+
+      if (!confirmRes.ok) {
+        const data = await confirmRes.json().catch(() => ({}));
+        throw new Error(data.error || "Upload verification failed.");
+      }
+
+      const data = (await confirmRes.json()) as { upload: UploadedFile };
+      onChange(data.upload);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed.");
     } finally {
       setBusy(false);
+      setProgress(0);
     }
+  }
+
+  async function proxyUpload(file: File) {
+    const form = new FormData();
+    form.append("kind", kind);
+    form.append("file", file);
+
+    const res = await fetch("/api/uploads", { method: "POST", body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Upload failed.");
+    onChange(data.upload as UploadedFile);
+  }
+
+  function uploadDirect(url: string, file: File): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", url, true);
+      xhr.setRequestHeader("Content-Type", file.type);
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          setProgress(Math.round((e.loaded / e.total) * 100));
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve();
+        } else {
+          reject(new Error(`Upload failed (HTTP ${xhr.status}).`));
+        }
+      };
+      xhr.onerror = () => reject(new Error("Network error during upload."));
+      xhr.send(file);
+    });
   }
 
   function handleInput(e: ChangeEvent<HTMLInputElement>) {
@@ -125,12 +201,25 @@ export function FileUpload({
             )}
           </span>
           <span className="text-sm font-medium">
-            {busy ? "Uploading…" : "Click to upload"}
+            {busy
+              ? progress > 0
+                ? `Uploading… ${progress}%`
+                : "Preparing…"
+              : "Click to upload"}
           </span>
           <span className="text-xs text-text-subtle">
             {helper ?? "JPG, PNG, WebP, or GIF · max 8 MB"}
           </span>
         </button>
+      )}
+
+      {busy && progress > 0 && (
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+          <div
+            className="h-full rounded-full bg-brand-500 transition-all"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
       )}
 
       {error && (

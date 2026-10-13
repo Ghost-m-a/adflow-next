@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Input, PasswordInput } from "@/components/ui";
+import { GoogleButton } from "@/components/auth/GoogleButton";
 import { RefreshCw } from "lucide-react";
 import { suggestUsername, isValidUsername } from "@/lib/utils/username";
 
@@ -103,6 +104,21 @@ export default function SignupPage() {
       <p className="mt-3 text-sm leading-6 text-text-muted">
         Join ADFLOW to discover campaigns, collaborate, and grow.
       </p>
+
+      <div className="mt-6 space-y-4">
+        <GoogleButton label="Sign up with Google" />
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t border-border" />
+          </div>
+          <div className="relative flex justify-center text-xs">
+            <span className="bg-canvas px-2 uppercase tracking-wider text-text-subtle">
+              or sign up with email
+            </span>
+          </div>
+        </div>
+      </div>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <Input

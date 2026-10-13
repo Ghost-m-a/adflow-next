@@ -108,8 +108,7 @@ export async function POST(req: NextRequest) {
       appOrigin: origin,
     });
 
-    // For the mock provider, immediately confirm the deposit so the
-    // user sees the balance change on redirect.
+    // Only mock deposits auto-confirm. Real Stripe confirms via webhook.
     if (deposit.provider === "mock") {
       await confirmDeposit(deposit._id.toString(), deposit.providerSessionId);
     }

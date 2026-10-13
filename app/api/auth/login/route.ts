@@ -46,7 +46,17 @@ export async function POST(request: NextRequest) {
       }).select("+passwordHash twoFactorEnabled");
 
       // Use the same error for a missing user and an incorrect password.
-      if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+      // OAuth-only accounts have no passwordHash — they must sign in
+      // with their OAuth provider instead.
+      if (!user || !user.passwordHash) {
+         return NextResponse.json(
+            { error: "Invalid username/email or password." },
+            { status: 401 },
+         );
+      }
+
+      const passwordMatches = await bcrypt.compare(password, user.passwordHash);
+      if (!passwordMatches) {
          return NextResponse.json(
             { error: "Invalid username/email or password." },
             { status: 401 },

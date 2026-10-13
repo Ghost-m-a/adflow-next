@@ -2,6 +2,8 @@ import mongoose, { Model, Schema } from "mongoose";
 
 export type PlatformRole = "user" | "admin";
 
+export type AuthProvider = "password" | "google";
+
 export type EmailPreferenceKey =
    | "productUpdates"
    | "campaigns"
@@ -21,7 +23,7 @@ export interface IUser {
    name: string;
    username: string;
    email: string;
-   passwordHash: string;
+   passwordHash?: string;
    avatarUrl?: string;
    acceptedTermsAt: Date;
    isEmailVerified: boolean;
@@ -30,6 +32,10 @@ export interface IUser {
    lastLoginAt?: Date;
    emailPreferences: EmailPreferences;
    lastDigestAt?: Date;
+
+   /* ---------- OAuth ---------- */
+   authProvider: AuthProvider;
+   googleId?: string;
 
    /* ---------- Two-factor authentication ---------- */
    twoFactorEnabled: boolean;
@@ -70,8 +76,8 @@ const UserSchema = new Schema<IUser>(
       },
 
       passwordHash: {
+         // Optional for OAuth-only accounts.
          type: String,
-         required: true,
          select: false,
       },
 
@@ -118,6 +124,20 @@ const UserSchema = new Schema<IUser>(
       // Used to throttle the notification digest — one send per calendar
       // day per user.
       lastDigestAt: { type: Date },
+
+      /* ---------- OAuth ---------- */
+      authProvider: {
+         type: String,
+         enum: ["password", "google"],
+         default: "password",
+         required: true,
+      },
+      googleId: {
+         type: String,
+         sparse: true,
+         unique: true,
+         index: true,
+      },
 
       /* ---------- Two-factor authentication ---------- */
       twoFactorEnabled: { type: Boolean, default: false, required: true },

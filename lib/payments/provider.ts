@@ -42,9 +42,11 @@ class StripeProvider implements PayoutProvider {
   }
 }
 
+import { StripeConnectProvider } from "./stripe-connect-provider";
+
 export function getPayoutProvider(): PayoutProvider {
   const name = (process.env.PAYOUT_PROVIDER || "manual").toLowerCase();
-  if (name === "stripe") return new StripeProvider();
+  if (name === "stripe") return new StripeConnectProvider();
   return new ManualProvider();
 }
 
